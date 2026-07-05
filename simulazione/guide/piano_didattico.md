@@ -29,15 +29,15 @@ graph TD
   * [x] Creare `mock_hardware/busio.py` con la classe di bus `I2C`.
   * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_1.py`.
 
-### [ ] Passo 2: Controllo dei servomotori e motori DC (`adafruit_pca9685` e `adafruit_motor`)
+### [x] Passo 2: Controllo dei servomotori e motori DC (`adafruit_pca9685` e `adafruit_motor`)
 * **Obiettivo**: Comprendere i segnali PWM (modulazione di larghezza di impulso) per muovere attuatori.
 * **Componenti**:
-  * [ ] Comprendere il funzionamento del driver I2C a 16 canali PCA9685.
-  * [ ] Creare `mock_hardware/adafruit_pca9685.py` (simulazione canali PWM).
-  * [ ] Creare la cartella `mock_hardware/adafruit_motor/` con `__init__.py`.
-  * [ ] Creare `mock_hardware/adafruit_motor/servo.py` (simulazione angoli).
-  * [ ] Creare `mock_hardware/adafruit_motor/motor.py` (simulazione throttle).
-  * [ ] Scrivere e avviare lo script di test locale `simulazione/test_passo_2.py`.
+  * [x] Comprendere il funzionamento del driver I2C a 16 canali PCA9685.
+  * [x] Creare `mock_hardware/adafruit_pca9685.py` (simulazione canali PWM).
+  * [x] Creare la cartella `mock_hardware/adafruit_motor/` con `__init__.py`.
+  * [x] Creare `mock_hardware/adafruit_motor/servo.py` (simulazione angoli).
+  * [x] Creare `mock_hardware/adafruit_motor/motor.py` (simulazione throttle).
+  * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_2.py`.
 
 ### [ ] Passo 3: Input e Output Digitali (`gpiozero.py` e `spidev.py`)
 * **Obiettivo**: Leggere stati logici alti/bassi e inviare impulsi di trigger.
