@@ -39,13 +39,13 @@ graph TD
   * [x] Creare `mock_hardware/adafruit_motor/motor.py` (simulazione throttle).
   * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_2.py`.
 
-### [ ] Passo 3: Input e Output Digitali (`gpiozero.py` e `spidev.py`)
+### [x] Passo 3: Input e Output Digitali (`gpiozero.py` e `spidev.py`)
 * **Obiettivo**: Leggere stati logici alti/bassi e inviare impulsi di trigger.
 * **Componenti**:
-  * [ ] Comprendere il funzionamento dei GPIO digitali (infrarossi line tracking, buzzer, ultrasuoni).
-  * [ ] Creare `mock_hardware/gpiozero.py` con classi per `LED`, `TonalBuzzer`, `PWMOutputDevice`, `DistanceSensor` e `InputDevice`.
-  * [ ] Creare `mock_hardware/spidev.py` per simulare la comunicazione SPI (per i LED WS2812).
-  * [ ] Scrivere e avviare lo script di test locale `simulazione/test_passo_3.py`.
+  * [x] Comprendere il funzionamento dei GPIO digitali (infrarossi line tracking, buzzer, ultrasuoni).
+  * [x] Creare `mock_hardware/gpiozero.py` con classi per `LED`, `TonalBuzzer`, `PWMOutputDevice`, `DistanceSensor` e `InputDevice`.
+  * [x] Creare `mock_hardware/spidev.py` per simulare la comunicazione SPI (per i LED WS2812).
+  * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_3.py`.
 
 ### [ ] Passo 4: Sensori analogici e convertitore ADC (`smbus.py`)
 * **Obiettivo**: Convertire correnti/tensioni continue in valori digitali utilizzabili (0-255).
