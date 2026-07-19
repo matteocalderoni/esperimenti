@@ -47,12 +47,12 @@ graph TD
   * [x] Creare `mock_hardware/spidev.py` per simulare la comunicazione SPI (per i LED WS2812).
   * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_3.py`.
 
-### [ ] Passo 4: Sensori analogici e convertitore ADC (`smbus.py`)
+### [x] Passo 4: Sensori analogici e convertitore ADC (`smbus.py`)
 * **Obiettivo**: Convertire correnti/tensioni continue in valori digitali utilizzabili (0-255).
 * **Componenti**:
-  * [ ] Comprendere il chip ADC ADS7830 (partitore di tensione batteria e fotoresistenze).
-  * [ ] Creare `mock_hardware/smbus.py` simulando le chiamate I2C per i canali dell'ADC.
-  * [ ] Scrivere e avviare lo script di test locale `simulazione/test_passo_4.py`.
+  * [x] Comprendere il chip ADC ADS7830 (partitore di tensione batteria e fotoresistenze).
+  * [x] Creare `mock_hardware/smbus.py` simulando le chiamate I2C per i canali dell'ADC.
+  * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_4.py`.
 
 ### [ ] Passo 5: Scrittura sul display OLED (`luma/`)
 * **Obiettivo**: Visualizzare dati utili su uno schermo OLED grafico SSD1306.
