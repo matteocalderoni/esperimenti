@@ -54,12 +54,12 @@ graph TD
   * [x] Creare `mock_hardware/smbus.py` simulando le chiamate I2C per i canali dell'ADC.
   * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_4.py`.
 
-### [ ] Passo 5: Scrittura sul display OLED (`luma/`)
+### [x] Passo 5: Scrittura sul display OLED (`luma/`)
 * **Obiettivo**: Visualizzare dati utili su uno schermo OLED grafico SSD1306.
 * **Componenti**:
-  * [ ] Comprendere la libreria `luma.core` e il rendering raster.
-  * [ ] Creare i pacchetti mock per `luma.core` e `luma.oled`.
-  * [ ] Scrivere e avviare lo script di test locale `simulazione/test_passo_5.py`.
+  * [x] Comprendere la libreria `luma.core` e il rendering raster.
+  * [x] Creare i pacchetti mock per `luma.core` e `luma.oled`.
+  * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_5.py`.
 
 ### [ ] Passo 6: Flusso Video e Visione Artificiale (`picamera2.py` e `libcamera.py`)
 * **Obiettivo**: Catturare le immagini della telecamera e integrarle con OpenCV.
