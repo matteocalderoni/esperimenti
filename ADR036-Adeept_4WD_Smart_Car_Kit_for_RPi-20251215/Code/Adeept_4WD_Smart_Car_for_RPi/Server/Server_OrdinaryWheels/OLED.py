@@ -42,7 +42,6 @@ class OLED_ctrl(threading.Thread):
 				draw.text((0, 30), text_4, fill="white")
 				draw.text((0, 40), text_5, fill="white")
 				draw.text((0, 50), text_6, fill="white")
-			print('loop')
 			self.pause()
 
 	def pause(self):

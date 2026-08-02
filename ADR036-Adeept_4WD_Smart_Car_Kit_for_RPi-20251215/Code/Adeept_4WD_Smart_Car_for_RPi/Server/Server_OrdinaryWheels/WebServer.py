@@ -331,9 +331,14 @@ def update_code():
 
 async def check_permit(websocket):
     while True:
-        recv_str = await websocket.recv()
+        try:
+            recv_str = await websocket.recv()
+        except Exception:
+            return False
+        if not isinstance(recv_str, str):
+            continue
         cred_dict = recv_str.split(":")
-        if cred_dict[0] == "admin" and cred_dict[1] == "123456":
+        if len(cred_dict) >= 2 and cred_dict[0] == "admin" and cred_dict[1] == "123456":
             response_str = "congratulation, you have connect with server\r\nnow, you can do something else"
             await websocket.send(response_str)
             return True
@@ -352,23 +357,24 @@ async def recv_msg(websocket):
             'data' : None
         }
 
-        data = ''
-        data = await websocket.recv()
         try:
-            data = json.loads(data)
-        except Exception as e:
-            print('not A JSON')
+            data = await websocket.recv()
+        except Exception:
+            break
 
         if not data:
             continue
 
-        if isinstance(data,str):
+        try:
+            data_parsed = json.loads(data)
+            data = data_parsed
+        except Exception:
+            pass
+
+        if isinstance(data, str):
             robotCtrl(data, response)
-
             switchCtrl(data, response)
-
             functionSelect(data, response)
-
             configPWM(data, response)
 
             if 'get_info' == data:
@@ -379,10 +385,9 @@ async def recv_msg(websocket):
                 try:
                     set_B=data.split()
                     speed_set = int(set_B[1])
-                except:
+                except Exception:
                     pass
 
-            #CVFL
             elif 'CVFL' == data:
                 camera_opencv.FLCV_Status = 0
                 flask_app.modeselect('findlineCV')
@@ -405,20 +410,27 @@ async def recv_msg(websocket):
                 err = int(data.split()[1])
                 flask_app.camera.errorSet(err)
 
-        elif(isinstance(data,dict)):
-            if data['title'] == "findColorSet":
-                color = data['data']
-                flask_app.colorFindSet(color[0],color[1],color[2])
+        elif isinstance(data, dict):
+            if data.get('title') == "findColorSet":
+                color = data.get('data', [0, 0, 0])
+                flask_app.colorFindSet(color[0], color[1], color[2])
 
-        else:
-            pass
-        print(data)
-        response = json.dumps(response)
-        await websocket.send(response)
+        if data != 'get_info':
+            print(f"[WEBSOCKET RECV] Comando ricevuto: {data}")
 
-async def main_logic(websocket, path):
-    await check_permit(websocket)
-    await recv_msg(websocket)
+        try:
+            response_json = json.dumps(response)
+            await websocket.send(response_json)
+        except Exception:
+            break
+
+async def main_logic(websocket, path=None):
+    try:
+        if await check_permit(websocket):
+            print("[WEBSOCKET] Client connesso e autenticato con successo!")
+            await recv_msg(websocket)
+    except Exception as e:
+        print(f"[WEBSOCKET EVENT] Chiusura o errore connessione: {e}")
 
 def show_wlan0_ip():
     try:
@@ -469,31 +481,18 @@ if __name__ == '__main__':
         ws2812.led_close()
         pass
 
-    while  1:
-        try:                  #Start server,waiting for client
-            start_server = websockets.serve(main_logic, '0.0.0.0', 8888)
-            asyncio.get_event_loop().run_until_complete(start_server)
-            print('waiting for connection...')
-            # print('...connected from :', addr)
-            break
-        except Exception as e:
-            print(e)
-            ws2812.set_all_led_color_data(0,0,0)
-            ws2812.show()
+    async def start_ws():
+        async with websockets.serve(main_logic, '0.0.0.0', 8888):
+            print('WebSocket Server running on ws://0.0.0.0:8888')
+            await asyncio.Future()
 
-        try:
-            ws2812.set_all_led_color_data(0,80,255)
-            ws2812.show()
-        except:
-            pass
     try:
-        asyncio.get_event_loop().run_forever()
+        asyncio.run(start_ws())
     except Exception as e:
         print(e)
         ws2812.led_close()
         move.destroy()
     except KeyboardInterrupt:
-        
         ws2812.led_close()
         matrix.matrix_display.fill(0) 
         move.destroy()

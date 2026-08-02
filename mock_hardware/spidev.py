@@ -16,8 +16,8 @@ class SpiDev:
     def close(self):
         print(f"[MOCK SPI] Canale SPI chiuso.")
 
-    def xfer2(self, data):
-        # xfer2 invia una serie di byte fittizi e restituisce la risposta
-        # Per il nostro simulatore, logghiamo solo l'avvenuta scrittura fittizia
-        # ed evitiamo stampe ripetitive per non intasare la console.
+    def xfer2(self, data, *_args, **_kwargs):
+        return data
+
+    def xfer(self, data, *_args, **_kwargs):
         return data

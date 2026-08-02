@@ -11,10 +11,9 @@ class MockDraw:
     def text(self, xy, text, fill="white", **kwargs):
         x, y = xy
         self.lines[y] = text
-        print(f"[MOCK OLED DRAW] Posizione ({x}, {y}): '{text}'")
 
     def rectangle(self, xy, fill=None, outline=None, **kwargs):
-        print(f"[MOCK OLED DRAW] Rettangolo: {xy}")
+        pass
 
 
 class canvas:
@@ -31,7 +30,11 @@ class canvas:
         return self.draw
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if hasattr(self.device, 'last_screen'):
-            self.device.last_screen = dict(self.draw.lines)
-        print(f"[MOCK OLED DISPLAY] Frame inviato allo schermo ({len(self.draw.lines)} righe di testo)")
+        new_lines = dict(self.draw.lines)
+        old_lines = getattr(self.device, 'last_screen', {})
+        if new_lines != old_lines:
+            self.device.last_screen = new_lines
+            print(f"[MOCK OLED DISPLAY] Contenuto schermo aggiornato ({len(new_lines)} righe):")
+            for y, txt in new_lines.items():
+                print(f"  -> Riga (y={y}): '{txt}'")
         return False

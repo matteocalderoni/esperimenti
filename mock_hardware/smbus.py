@@ -40,7 +40,13 @@ class SMBus:
         addr_values = self.mock_values.get(addr, {})
         value = addr_values.get(chn, 128) # Default a metà scala (128)
 
-        print(f"[MOCK SMBUS] Lettura I2C su ind. {hex(addr)} | Cmd: {hex(cmd)} (Canale {chn}) -> Valore: {value}")
+        # Evitiamo di intasare la console con stampe a loop per il polling continuo della batteria (canale 0)
+        last_key = (addr, chn)
+        if not hasattr(self, '_last_read'):
+            self._last_read = {}
+        if self._last_read.get(last_key) != value:
+            self._last_read[last_key] = value
+            print(f"[MOCK SMBUS] Lettura I2C su ind. {hex(addr)} | Cmd: {hex(cmd)} (Canale {chn}) -> Valore: {value}")
         return value
 
     def write_byte_data(self, addr, cmd, val):

@@ -61,10 +61,10 @@ graph TD
   * [x] Creare i pacchetti mock per `luma.core` e `luma.oled`.
   * [x] Scrivere e avviare lo script di test locale `simulazione/test_passo_5.py`.
 
-### [ ] Passo 6: Flusso Video e Visione Artificiale (`picamera2.py` e `libcamera.py`)
+### [x] Passo 6: Flusso Video e Visione Artificiale (`picamera2.py` e `libcamera.py`)
 * **Obiettivo**: Catturare le immagini della telecamera e integrarle con OpenCV.
 * **Componenti**:
-  * [ ] Creare i mock per `libcamera.py` e `picamera2.py`.
-  * [ ] Configurare l'acquisizione video fittizia devitalizzando l'errore o deviandola sulla webcam di sistema.
-  * [ ] Avviare per la prima volta `WebServer.py` su Mac, collegarsi con la WebUI o la GUI desktop.
-  * [ ] Convalidare la ricezione dei comandi.
+  * [x] Creare i mock per `libcamera.py` e `picamera2.py`.
+  * [x] Configurare l'acquisizione video fittizia devitalizzando l'errore o deviandola sulla webcam di sistema.
+  * [x] Avviare per la prima volta `WebServer.py` su Mac, collegarsi con la WebUI o la GUI desktop.
+  * [x] Convalidare la ricezione dei comandi.

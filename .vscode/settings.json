@@ -1,0 +1,10 @@
+{
+  "python.analysis.extraPaths": [
+    "./mock_hardware",
+    "./ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels"
+  ],
+  "python.autoComplete.extraPaths": [
+    "./mock_hardware",
+    "./ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels"
+  ]
+}
