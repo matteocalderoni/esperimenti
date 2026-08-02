@@ -48,6 +48,21 @@ def sendicon(filename):
 def sendfonts(filename):
     return send_from_directory(dir_path+'/dist/fonts', filename)
 
+sim_dir_path = os.path.realpath(os.path.join(dir_path, '../../../../../simulazione/web_simulator'))
+if not os.path.exists(sim_dir_path):
+    sim_dir_path = '/Users/mauroi/Documents/esperimenti/simulazione/web_simulator'
+
+@app.route('/simulator')
+@app.route('/simulator/')
+def simulator():
+    if os.path.exists(os.path.join(sim_dir_path, 'index.html')):
+        return send_from_directory(sim_dir_path, 'index.html')
+    return send_from_directory(sim_dir_path, 'simulator.html')
+
+@app.route('/simulator/<path:filename>')
+def send_simulator_file(filename):
+    return send_from_directory(sim_dir_path, filename)
+
 @app.route('/<path:filename>')
 def sendgen(filename):
     return send_from_directory(dir_path+'/dist', filename)

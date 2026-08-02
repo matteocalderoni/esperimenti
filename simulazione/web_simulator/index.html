@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Adeept 4WD Smart Car - Simulatore Virtuale 2D</title>
+  
+  <!-- CSS Modulari -->
+  <link rel="stylesheet" href="/simulator/css/base.css">
+  <link rel="stylesheet" href="/simulator/css/layout.css">
+  <link rel="stylesheet" href="/simulator/css/components.css">
+  <link rel="stylesheet" href="/simulator/css/telemetry.css">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-icon">🤖</div>
+      <div>
+        <h1 class="brand-title">Adeept 4WD Virtual Simulator</h1>
+        <p style="font-size:12px; color:var(--text-muted);">Ambiente Grafico Interattivo 2D / Kinematics Simulation</p>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="mode-badge" id="modeBadge">MODE: MANUAL (PT)</span>
+      <div class="status-badge" id="wsStatus">
+        <div class="status-dot"></div> CONNECTING WEBSOCKET...
+      </div>
+    </div>
+  </header>
+
+  <!-- Dashboard Grid -->
+  <main class="dashboard-grid">
+
+    <!-- Left Column: Arena Canvas & Telemetry -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-title-icon">🗺️</span> Campo di Prova Virtuale (Arena Top-Down 2D)
+        </div>
+        <div style="font-size:12px; color:var(--text-muted);">Fisica veicolo 4WD • Sensore Ultrasuoni • LED RGB</div>
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="arenaCanvas"></canvas>
+      </div>
+
+      <!-- Telemetry Cards -->
+      <div class="telemetry-grid">
+        <div class="telemetry-item">
+          <div class="telemetry-label">Velocità Motori</div>
+          <div class="telemetry-value" id="teleSpeed">0 %</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="telemetry-label">Angolo di Rotta</div>
+          <div class="telemetry-value" id="teleHeading">0°</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="telemetry-label">Servo Pan (Testa)</div>
+          <div class="telemetry-value" id="telePan">0°</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="telemetry-label">Distanza Ostacolo</div>
+          <div class="telemetry-value" id="teleDist">50.0 cm</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="telemetry-label">Temperatura CPU</div>
+          <div class="telemetry-value" id="teleCpuTemp" style="color:var(--accent-amber)">50.0 °C</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="telemetry-label">Uso Memoria RAM</div>
+          <div class="telemetry-value" id="teleRamUse" style="color:var(--accent-pink)">45 %</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Sidebar (FPV Camera & Controls) -->
+    <div class="sidebar">
+
+      <!-- FPV Camera Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">📷</span> Telecamera FPV Virtuale (Visuale Robot)
+          </div>
+          <span class="mode-badge" style="background:rgba(0,240,255,0.1); border-color:var(--accent-cyan); color:var(--accent-cyan)">OPENCV LIVE</span>
+        </div>
+
+        <canvas id="fpvCanvas"></canvas>
+      </div>
+
+      <!-- Controls & Legend Card -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-title-icon">🎮</span> Pulsantiera & Controlli Rapidi
+          </div>
+        </div>
+
+        <!-- Steering Grid -->
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">Controllo Trazione Motori:</div>
+        <div class="controls-grid">
+          <button class="btn-ctrl" onclick="sendCommand('rotate-left')">↺ 1</button>
+          <button class="btn-ctrl" onclick="sendCommand('forward')">▲ W</button>
+          <button class="btn-ctrl" onclick="sendCommand('rotate-right')">↻ 3</button>
+          <button class="btn-ctrl" onclick="sendCommand('left')">◄ A</button>
+          <button class="btn-ctrl" onclick="sendCommand('backward')">▼ S</button>
+          <button class="btn-ctrl" onclick="sendCommand('right')">► D</button>
+        </div>
+
+        <!-- Pan-Tilt Grid -->
+        <div style="font-size:12px; color:var(--text-muted); margin-top:14px; margin-bottom:6px;">Controllo Testa Pan-Tilt:</div>
+        <div class="controls-grid">
+          <button class="btn-ctrl" onclick="sendCommand('lookleft')">◄ J</button>
+          <button class="btn-ctrl" onclick="sendCommand('up')">▲ I</button>
+          <button class="btn-ctrl" onclick="sendCommand('lookright')">► L</button>
+          <button class="btn-ctrl" style="grid-column: span 3" onclick="sendCommand('home')">⌂ HOME (Ripristino Al Centro)</button>
+        </div>
+
+        <!-- Action Modes Grid -->
+        <div style="font-size:12px; color:var(--text-muted); margin-top:14px; margin-bottom:6px;">Modalità Autonome & Effetti:</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button class="btn-ctrl" style="background:rgba(131,56,236,0.2); border-color:var(--accent-purple);" onclick="sendCommand('automatic')">🤖 Evitamento Ostacoli Automatico</button>
+          <button class="btn-ctrl" style="background:rgba(0,245,212,0.15); border-color:var(--accent-green);" onclick="sendCommand('findColor')">🎯 Inseguimento Colore (OpenCV)</button>
+          <button class="btn-ctrl" style="background:rgba(255,0,127,0.15); border-color:var(--accent-pink);" onclick="sendCommand('police')">🚨 Luci della Polizia (WS2812)</button>
+          <button class="btn-ctrl" style="background:rgba(255,190,11,0.15); border-color:var(--accent-amber);" onclick="sendCommand('stopCV')">⏹ Disattiva Tutte le Funzioni</button>
+        </div>
+
+        <!-- Keyboard Legend -->
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); font-size:11px; color:var(--text-muted); line-height:1.6;">
+          <strong>Legenda Tastiera:</strong><br>
+          <span class="key-pill">W</span><span class="key-pill">A</span><span class="key-pill">S</span><span class="key-pill">D</span> Trazione • 
+          <span class="key-pill">1</span><span class="key-pill">3</span> Rotazione • 
+          <span class="key-pill">I</span><span class="key-pill">J</span><span class="key-pill">K</span><span class="key-pill">L</span> Pan-Tilt • 
+          <span class="key-pill">Space</span> Freno Totale
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- JavaScript Modulari -->
+  <script src="/simulator/js/state.js"></script>
+  <script src="/simulator/js/websocket.js"></script>
+  <script src="/simulator/js/controls.js"></script>
+  <script src="/simulator/js/physics.js"></script>
+  <script src="/simulator/js/render_arena.js"></script>
+  <script src="/simulator/js/render_fpv.js"></script>
+  <script src="/simulator/js/main.js"></script>
+</body>
+</html>
