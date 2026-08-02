@@ -76,6 +76,11 @@ function applyLocalCommand(cmd) {
     robotState.speed = 0;
     robotState.steering = 0;
     robotState.panAngle = 0;
+    if (cmd === 'stopCV' && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send('automaticOff');
+      ws.send('policeOff');
+      ws.send('trackLineOff');
+    }
   }
   updateModeBadge();
 }

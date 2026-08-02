@@ -115,6 +115,11 @@ def functionSelect(command_input, response):
         if OLED_connection:
             screen.screen_show(5,'FUNCTION OFF')
         flask_app.modeselect('none')
+        fuc.pause()
+        try:
+            ws2812.pause()
+        except:
+            pass
         scGear.moveServoInit([0])
         scGear.moveServoInit([1])
         move.motorStop()
@@ -174,8 +179,10 @@ def functionSelect(command_input, response):
     elif 'policeOff' == command_input:
         if OLED_connection:
             screen.screen_show(5,'FUNCTION OFF')
-        ws2812.breath(70,70,255)
-        pass
+        try:
+            ws2812.pause()
+        except:
+            pass
 
     elif 'keepDistance' == command_input:
         functions.last_status = 25
