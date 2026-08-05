@@ -20,8 +20,9 @@ class PCA9685:
 
     @frequency.setter
     def frequency(self, val):
-        self._frequency = val
-        print(f"[MOCK PCA9685] Frequenza PWM impostata a: {val}Hz")
+        if self._frequency != val:
+            self._frequency = val
+            print(f"   ├─ ⚙️ [PCA9685] Frequenza PWM: {val}Hz")
 
     def deinit(self):
         print("[MOCK PCA9685] Chip disattivato.")

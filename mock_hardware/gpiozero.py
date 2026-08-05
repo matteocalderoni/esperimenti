@@ -17,12 +17,14 @@ class LED(GPIODevice):
         print(f"[MOCK LED] Inizializzato LED su pin GPIO {self.pin}")
 
     def on(self):
-        self._value = True
-        print(f"[MOCK LED] Pin {self.pin} -> **ACCESO**")
+        if not self._value:
+            self._value = True
+            print(f"   └─ 💡 [LED GPIO {self.pin}] -> **ACCESO**")
 
     def off(self):
-        self._value = False
-        print(f"[MOCK LED] Pin {self.pin} -> **SPENTO**")
+        if self._value:
+            self._value = False
+            print(f"   └─ 💡 [LED GPIO {self.pin}] -> **SPENTO**")
 
     @property
     def value(self):
@@ -30,9 +32,11 @@ class LED(GPIODevice):
 
     @value.setter
     def value(self, val):
-        self._value = bool(val)
-        status = "ACCESO" if self._value else "SPENTO"
-        print(f"[MOCK LED] Pin {self.pin} -> {status}")
+        val_bool = bool(val)
+        if self._value != val_bool:
+            self._value = val_bool
+            status = "ACCESO" if self._value else "SPENTO"
+            print(f"   └─ 💡 [LED GPIO {self.pin}] -> **{status}**")
 
 class InputDevice(GPIODevice):
     def __init__(self, pin, *args, **kwargs):

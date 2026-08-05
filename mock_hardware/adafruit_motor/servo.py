@@ -16,11 +16,11 @@ class Servo:
 
     @angle.setter
     def angle(self, val):
-        self._angle = val
-        if val is not None:
-            # Verifica che l'angolo sia nei limiti fisici consentiti
-            if val < 0 or val > self.actuation_range:
-                print(f"[MOCK SERVO WARNING] Angolo {val}° fuori range consentito (0-{self.actuation_range})!")
-            print(f"[MOCK SERVO] Canale {self.channel.index} -> Angolo impostato a: {val}°")
-        else:
-            print(f"[MOCK SERVO] Canale {self.channel.index} -> Servo disattivato (None)")
+        if self._angle != val:
+            self._angle = val
+            if val is not None:
+                if val < 0 or val > self.actuation_range:
+                    print(f"   └─ ⚠️ [SERVO WARNING] Angolo {val}° fuori range consentito (0-{self.actuation_range})!")
+                print(f"   └─ 🎯 [SERVO PWM] Canale {self.channel.index} -> Angolo: {val}°")
+            else:
+                print(f"   └─ 🎯 [SERVO PWM] Canale {self.channel.index} -> Disattivato")

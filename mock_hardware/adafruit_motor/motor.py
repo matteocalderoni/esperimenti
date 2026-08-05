@@ -18,13 +18,14 @@ class DCMotor:
 
     @throttle.setter
     def throttle(self, val):
-        self._throttle = val
-        if val is None or val == 0:
-            print(f"[MOCK MOTOR] Canali ({self.positive_channel.index}, {self.negative_channel.index}) -> **FERMO**")
-        else:
-            speed_percent = val * 100
-            direction = "AVANTI" if val > 0 else "INDIETRO"
-            print(f"[MOCK MOTOR] Canali ({self.positive_channel.index}, {self.negative_channel.index}) -> Spinta: {abs(speed_percent):.1f}% ({direction})")
+        if self._throttle != val:
+            self._throttle = val
+            if val is None or val == 0:
+                print(f"   └─ 🚗 [MOTORI DC] Canali ({self.positive_channel.index}, {self.negative_channel.index}) -> **FERMO**")
+            else:
+                speed_percent = abs(val * 100)
+                direction = "AVANTI" if val > 0 else "INDIETRO"
+                print(f"   └─ 🚗 [MOTORI DC] Canali ({self.positive_channel.index}, {self.negative_channel.index}) -> {direction} ({speed_percent:.1f}%)")
 
     @property
     def decay_mode(self):

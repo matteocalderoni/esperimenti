@@ -359,6 +359,42 @@ async def check_permit(websocket):
             response_str = "sorry, the username or password is wrong, please submit again"
             await websocket.send(response_str)
 
+def print_command_banner(cmd_input):
+    if cmd_input == 'get_info':
+        return
+    title_map = {
+        'forward': '▲ TRAZIONE: AVANTI',
+        'backward': '▼ TRAZIONE: RETROMARCIA',
+        'DS': '⏹ TRAZIONE: FERMO (STOP)',
+        'left': '◄ STERZO: SINISTRA',
+        'right': '► STERZO: DESTRA',
+        'TS': '⏹ STERZO: NEUTRO',
+        'rotate-left': '↺ ROTAZIONE: ANTIORARIA (SINISTRA)',
+        'rotate-right': '↻ ROTAZIONE: ORARIA (DESTRA)',
+        'lookleft': '◄ PAN-TILT: GIRATE SINISTRA (PAN)',
+        'lookright': '► PAN-TILT: GIRATE DESTRA (PAN)',
+        'up': '▲ PAN-TILT: ALZA TESTA (TILT)',
+        'down': '▼ PAN-TILT: ABBASSA TESTA (TILT)',
+        'home': '⌂ PAN-TILT: RIPRISTINO POSIZIONE CENTRALE',
+        'automatic': '🤖 MODALITÀ: EVITAMENTO OSTACOLI AUTOMATICO',
+        'automaticOff': '⏹ MODALITÀ: DISATTIVA EVITAMENTO OSTACOLI',
+        'findColor': '🎯 MODALITÀ: INSEGUIMENTO COLORE OPENCV',
+        'trackLine': '🛤️ MODALITÀ: SEGUIPISTA IR',
+        'trackLineOff': '⏹ MODALITÀ: DISATTIVA SEGUIPISTA IR',
+        'police': '🚨 EFFETTO VISIVO: LUCI POLIZIA WS2812',
+        'policeOff': '⏹ EFFETTO VISIVO: DISATTIVA LUCI POLIZIA',
+        'stopCV': '🛑 ARRESTO GENERALE: DISATTIVA TUTTE LE FUNZIONI',
+        'scan': '🔍 SCANNER ULTRASUONI: RADAR SCAN 180°'
+    }
+    if isinstance(cmd_input, dict):
+        label = f"JSON DATA: {cmd_input}"
+    else:
+        label = title_map.get(str(cmd_input), f"COMANDO: {cmd_input}")
+
+    print("\n" + "═" * 70)
+    print(f"📥 [COMANDO WEBSOCKET RICEVUTO] -> {label}")
+    print("═" * 70)
+
 async def recv_msg(websocket):
     global speed_set, modeSelect
     move.setup()
@@ -370,15 +406,21 @@ async def recv_msg(websocket):
             'data' : None
         }
 
-        data = ''
-        data = await websocket.recv()
         try:
-            data = json.loads(data)
-        except Exception as e:
-            print('not A JSON')
+            data = await websocket.recv()
+        except Exception:
+            break
 
         if not data:
             continue
+
+        try:
+            data_parsed = json.loads(data)
+            data = data_parsed
+        except Exception:
+            pass
+
+        print_command_banner(data)
 
         if isinstance(data,str):
             robotCtrl(data, response)
