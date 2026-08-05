@@ -57,7 +57,7 @@ function drawArena() {
   arenaCtx.fill();
   arenaCtx.shadowBlur = 0;
 
-  // 6. Cono Raggio Ultrasuoni
+  // 6. Cono Raggio Ultrasuoni (Ampiezza fisica ~22°)
   const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
   const distPx = robotState.ultrasonicDist * 160;
   arenaCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
@@ -65,7 +65,7 @@ function drawArena() {
   arenaCtx.lineWidth = 1;
   arenaCtx.beginPath();
   arenaCtx.moveTo(robotState.x, robotState.y);
-  arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.25, totalHeadAngle + 0.25);
+  arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.38, totalHeadAngle + 0.38);
   arenaCtx.closePath();
   arenaCtx.fill();
   arenaCtx.stroke();

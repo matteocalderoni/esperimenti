@@ -4,7 +4,7 @@
 const robotState = {
   // Posizione e Fisica Veicolo
   x: 350,
-  y: 300,
+  y: 150,
   angle: 0,           // Angolo di rotta in radianti (0 = destra, PI/2 = giù)
   speed: 0,           // Velocità lineare (-5 a +5)
   steering: 0,        // Angolo di sterzo (-0.05 a +0.05)
@@ -39,10 +39,19 @@ const arenaObjects = {
     {x: 150, y: 370},
     {x: 100, y: 260}
   ],
-  // Muri e Ostacoli Fisici
+  // Muri e Ostacoli Fisici (Include barriere adiacenti ai bordi per percorsi slalom/labirinto)
   walls: [
-    {x: 280, y: 200, w: 120, h: 25},
-    {x: 480, y: 270, w: 25, h: 90}
+    // Barriera sporgente dal bordo superiore
+    {x: 180, y: 0, w: 25, h: 130},
+    // Barriera sporgente dal bordo inferiore
+    {x: 460, y: 390, w: 25, h: 130},
+    // Barriera adiacente al bordo sinistro
+    {x: 0, y: 250, w: 120, h: 25},
+    // Barriera adiacente al bordo destro
+    {x: 580, y: 180, w: 120, h: 25},
+    // Isole centrali per chicane
+    {x: 290, y: 190, w: 110, h: 25},
+    {x: 360, y: 300, w: 25, h: 85}
   ],
   // Target Colore per OpenCV (Pallina verde)
   targetBall: { x: 350, y: 90, radius: 18, color: '#00ff55' },

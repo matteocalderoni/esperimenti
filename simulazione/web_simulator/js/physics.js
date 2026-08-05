@@ -6,33 +6,60 @@ function updatePhysics() {
   robotState.x += Math.cos(robotState.angle) * robotState.speed;
   robotState.y += Math.sin(robotState.angle) * robotState.speed;
 
-  // Limiti Arena
-  const margin = 30;
-  if (robotState.x < margin) { robotState.x = margin; robotState.speed = 0; }
-  if (robotState.x > arenaCanvas.width - margin) { robotState.x = arenaCanvas.width - margin; robotState.speed = 0; }
-  if (robotState.y < margin) { robotState.y = margin; robotState.speed = 0; }
-  if (robotState.y > arenaCanvas.height - margin) { robotState.y = arenaCanvas.height - margin; robotState.speed = 0; }
+  // Limiti Arena & Collisione Bordo (Margin con tolleranza ingombro telaio 35px)
+  const margin = 35;
+  if (robotState.x < margin) { robotState.x = margin; robotState.speed = -0.5; robotState.angle += 0.1; }
+  if (robotState.x > arenaCanvas.width - margin) { robotState.x = arenaCanvas.width - margin; robotState.speed = -0.5; robotState.angle += 0.1; }
+  if (robotState.y < margin) { robotState.y = margin; robotState.speed = -0.5; robotState.angle += 0.1; }
+  if (robotState.y > arenaCanvas.height - margin) { robotState.y = arenaCanvas.height - margin; robotState.speed = -0.5; robotState.angle += 0.1; }
 
-  // 2. Calcolo distanza ultrasuoni col Raycasting
-  const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
-  let minDist = 2.0;
-  const rayMaxDist = 320;
+  // 1. Collisione solida e blocco di compenetrazione telaio (Hard Wall Push-Out)
+  const carR = 22;
+  for (const w of arenaObjects.walls) {
+    if (robotState.x + carR > w.x && robotState.x - carR < w.x + w.w &&
+        robotState.y + carR > w.y && robotState.y - carR < w.y + w.h) {
+      
+      const overlapLeft = (robotState.x + carR) - w.x;
+      const overlapRight = (w.x + w.w) - (robotState.x - carR);
+      const overlapTop = (robotState.y + carR) - w.y;
+      const overlapBottom = (w.y + w.h) - (robotState.y - carR);
 
-  for (let r = 10; r < rayMaxDist; r += 5) {
-    const rx = robotState.x + Math.cos(totalHeadAngle) * r;
-    const ry = robotState.y + Math.sin(totalHeadAngle) * r;
+      const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
-    if (rx < 10 || rx > arenaCanvas.width - 10 || ry < 10 || ry > arenaCanvas.height - 10) {
-      minDist = r / 160.0;
-      break;
+      if (minOverlap === overlapLeft) robotState.x = w.x - carR;
+      else if (minOverlap === overlapRight) robotState.x = w.x + w.w + carR;
+      else if (minOverlap === overlapTop) robotState.y = w.y - carR;
+      else if (minOverlap === overlapBottom) robotState.y = w.y + w.h + carR;
+
+      if (robotState.speed > 0) robotState.speed = -0.4;
     }
-    for (const w of arenaObjects.walls) {
-      if (rx >= w.x && rx <= w.x + w.w && ry >= w.y && ry <= w.y + w.h) {
-        minDist = r / 160.0;
+  }
+
+  // 2. Calcolo cono di rilevamento ultrasuoni (Multi-Ray Cone Sensing: Raggio Centro, Sinistra -22°, Destra +22°)
+  const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
+  const anglesToTest = [
+    totalHeadAngle,
+    totalHeadAngle - 0.38, // Raggio cono sinistro (~22°)
+    totalHeadAngle + 0.38  // Raggio cono destro (~22°)
+  ];
+  let minDist = 2.0;
+
+  for (const testAngle of anglesToTest) {
+    for (let r = 10; r < 320; r += 5) {
+      const rx = robotState.x + Math.cos(testAngle) * r;
+      const ry = robotState.y + Math.sin(testAngle) * r;
+
+      if (rx < 15 || rx > arenaCanvas.width - 15 || ry < 15 || ry > arenaCanvas.height - 15) {
+        minDist = Math.min(minDist, r / 160.0);
         break;
       }
+      for (const w of arenaObjects.walls) {
+        if (rx >= w.x && rx <= w.x + w.w && ry >= w.y && ry <= w.y + w.h) {
+          minDist = Math.min(minDist, r / 160.0);
+          break;
+        }
+      }
     }
-    if (minDist < 2.0) break;
   }
   robotState.ultrasonicDist = Math.max(0.05, minDist);
 
@@ -115,30 +142,62 @@ function executeAutonomousBehaviors() {
   const mode = robotState.activeMode;
 
   if (mode === 'automatic') {
-    robotState.panAngle += robotState.panSweepDir;
-    if (robotState.panAngle > 45) robotState.panSweepDir = -2.5;
-    if (robotState.panAngle < -45) robotState.panSweepDir = 2.5;
-
-    if (robotState.ultrasonicDist < 0.35) {
-      robotState.speed = -0.8;
-      robotState.angle += 0.1;
-    } else {
+    // 1. Quando la strada è libera (≥ 35 cm), la testa rimane bloccata DRITTA (0°) per evitare punti ciechi
+    if (robotState.ultrasonicDist >= 0.35) {
+      robotState.panAngle = 0;
       robotState.speed = 2.2;
       robotState.steering = 0;
+    } else {
+      // 2. Ostacolo rilevato di fronte (< 35 cm): Frena, orienta la testa per valutare gli spazi e sterza
+      robotState.speed = -0.5; // Retromarcia di sicurezza
+      
+      robotState.panAngle += robotState.panSweepDir;
+      if (robotState.panAngle > 40) robotState.panSweepDir = -3.5;
+      if (robotState.panAngle < -40) robotState.panSweepDir = 3.5;
+
+      // Sterza nella direzione dove la testa trova via libera
+      if (robotState.panAngle > 0) {
+        robotState.angle += 0.09; // Sterza a destra
+      } else {
+        robotState.angle -= 0.09; // Sterza a sinistra
+      }
     }
   }
   else if (mode === 'findColor') {
     const ball = arenaObjects.targetBall;
     const dx = ball.x - robotState.x;
     const dy = ball.y - robotState.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
     const targetAngle = Math.atan2(dy, dx);
+    
+    // 1. Servo Pan-Tilt Tracking: la testa orienta la fotocamera per agganciare il centro del target verde
     let diffAngle = (targetAngle - robotState.angle) * 180 / Math.PI;
-
     while (diffAngle < -180) diffAngle += 360;
     while (diffAngle > 180) diffAngle -= 360;
 
     const desiredPan = Math.max(-75, Math.min(75, diffAngle));
-    robotState.panAngle += (desiredPan - robotState.panAngle) * 0.15;
+    robotState.panAngle += (desiredPan - robotState.panAngle) * 0.18;
+
+    const desiredTilt = Math.max(-25, Math.min(25, (150 - dist) * 0.2));
+    robotState.tiltAngle += (desiredTilt - robotState.tiltAngle) * 0.15;
+
+    // 2. Inseguimento Veicolo con Protezione Ostacoli Frontale (Chassis Follow + Ultrasonic Safety Guard)
+    let bodyAngleDiff = targetAngle - robotState.angle;
+    while (bodyAngleDiff < -Math.PI) bodyAngleDiff += Math.PI * 2;
+    while (bodyAngleDiff > Math.PI) bodyAngleDiff -= Math.PI * 2;
+
+    // Se un muro sbarra la strada di fronte (< 35cm), esegue l'aggiramento in MARCIA AVANTI (evita retromarcia cieca contro i muri posteriori)
+    if (robotState.ultrasonicDist < 0.35) {
+      robotState.speed = 1.0; // Avanzamento moderato in avanti
+      // Sterza in marcia avanti verso l'estremità aperta dell'ostacolo (in base al Pan della testa)
+      robotState.steering = (robotState.panAngle < 0) ? 0.08 : -0.08;
+    } else if (dist > 70) {
+      robotState.steering = bodyAngleDiff * 0.08;
+      robotState.speed = Math.min(2.0, (dist - 65) * 0.025); // avanzamento graduale verso il target
+    } else {
+      robotState.speed = 0; // Target raggiunto in sicurezza
+      robotState.steering = 0;
+    }
   }
   else if (mode === 'trackLine') {
     const [left, center, right] = robotState.irSensors;
@@ -172,14 +231,24 @@ function executeAutonomousBehaviors() {
     const light = arenaObjects.lightSource;
     const dx = light.x - robotState.x;
     const dy = light.y - robotState.y;
+    const distToLight = Math.hypot(dx, dy);
     const targetAngle = Math.atan2(dy, dx);
     let diffAngle = targetAngle - robotState.angle;
 
     while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
     while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
 
-    robotState.steering = diffAngle * 0.1;
-    robotState.speed = 2.0;
+    // Protezione per angoli ciechi: se un ostacolo o una parete blocca il cammino (< 0.35m), devia per schivare il muro
+    if (robotState.ultrasonicDist < 0.35) {
+      robotState.speed = -0.6;
+      robotState.angle += 0.14; // devia per disincastrarsi dall'angolo cieco
+    } else if (distToLight > 60) {
+      robotState.steering = diffAngle * 0.08;
+      robotState.speed = Math.min(2.0, distToLight * 0.02);
+    } else {
+      robotState.speed = 0; // Sorgente luminosa raggiunta
+      robotState.steering = 0;
+    }
   }
 }
 

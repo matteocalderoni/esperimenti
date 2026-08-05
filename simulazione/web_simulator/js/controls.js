@@ -38,3 +38,47 @@ function initKeyboardControls() {
     }
   });
 }
+
+function initMouseInteraction() {
+  const canvas = document.getElementById('arenaCanvas');
+  if (!canvas) return;
+
+  let isDragging = null;
+
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    const ball = arenaObjects.targetBall;
+    const light = arenaObjects.lightSource;
+
+    const distBall = Math.hypot(mx - ball.x, my - ball.y);
+    const distLight = Math.hypot(mx - light.x, my - light.y);
+
+    if (distBall <= ball.radius + 15) {
+      isDragging = 'ball';
+    } else if (distLight <= light.radius + 15) {
+      isDragging = 'light';
+    }
+  });
+
+  canvas.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+    if (isDragging === 'ball') {
+      arenaObjects.targetBall.x = mx;
+      arenaObjects.targetBall.y = my;
+    } else if (isDragging === 'light') {
+      arenaObjects.lightSource.x = mx;
+      arenaObjects.lightSource.y = my;
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    isDragging = null;
+  });
+}

@@ -15,6 +15,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   initWebSocket();
   initKeyboardControls();
+  initMouseInteraction();
 
   requestAnimationFrame(gameLoop);
 });
