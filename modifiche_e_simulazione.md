@@ -21,11 +21,15 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 
 3. **Sviluppo del Simulatore Grafico 2D Modulare (`simulazione/web_simulator/`)**:
    * Progettata una dashboard interattiva HTML5 Canvas + Glassmorphism UI raggiungibile su **`http://localhost:5000/simulator`**.
-   * Architettura modulare pulita:
-     * `index.html`: Entry point conciso.
+   * Architettura modulare a responsabilità singola:
+     * `index.html`: Entry point con Selettore Engine (JS Experimental vs Python Server).
      * `css/`: `base.css`, `layout.css`, `components.css`, `telemetry.css`.
-     * `js/`: `state.js`, `websocket.js`, `controls.js`, `physics.js`, `render_arena.js`, `render_fpv.js`, `main.js`.
-   * Modellazione della cinematica 4WD, sensori IR, raggio ultrasuoni, inquadratura FPV 3D e modalità autonome (`automatic`, `findColor`, `trackLine`, `police`).
+     * `js/`: `state.js`, `kinematics.js`, `sensors.js`, `physics.js`, `render_arena.js`, `render_fpv.js`, `websocket.js`, `controls.js`, `main.js`.
+     * `js/behaviors/`: `automatic.js`, `find_color.js`, `track_line.js`, `track_light.js`, `keep_distance.js`.
+
+4. **Refactoring del Sistema di Logging del Terminale**:
+   * Introduzione di banner di separazione visuali (`════`) con icone per ogni comando WebSocket ricevuto in `WebServer.py`.
+   * Formattazione dei log hardware ad albero rientrato (`   └─ 🚗`) ed eliminazione dei log duplicati (`get_info`, `frequency`).
 
 ---
 
@@ -39,6 +43,7 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 * **Bug 1 (Firma WebSocket)**: La funzione `main_logic` accettava 2 argomenti (`websocket, path`), incompatibile con la versione `websockets` v10+ in Python 3.10+. Aggiornata a `async def main_logic(websocket, path=None)`.
 * **Bug 2 (Thread Infinito in `stopCV`)**: Cliccando **Disattiva Tutte le Funzioni** (`stopCV`), il codice originale di Adeept non chiamava `fuc.pause()` né `ws2812.pause()`. Di conseguenza, i thread in background continuavano ad inviare comandi di movimento e sterzo all'infinito sul terminale.
 * **Modifica Effettuata**: Inserite le chiamate esplicite a `fuc.pause()` e `ws2812.pause()` negli handler `stopCV` e `policeOff`.
+* **Miglioramento Logging**: Aggiunta la funzione `print_command_banner` per stampare banner visivi ed eliminare il rumore di fondo.
 
 ### 3. [OLED.py](file:///Users/mauroi/Documents/esperimenti/ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels/OLED.py)
 * **Bug Originale**: Il file conteneva l'istruzione `print('loop')` ad ogni iterazione del thread dello schermo, intasando la console di testo.
@@ -55,7 +60,8 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 | :--- | :--- | :--- |
 | **Esecuzione su Mac/PC** | ❌ Crash immediato (mancanza librerie GPIO e file `/sys/class/thermal/...`) | ✅ Esecuzione fluida 100% senza hardware reale grazie a `mock_hardware` |
 | **Connessione WebApp** | ❌ Crash WebSocket ogni 5s per eccezione lettura temperatura | ✅ Connessione WebSocket 100% stabile e senza disconnessioni |
-| **Console/Terminale** | ❌ Intasata da scritte `loop` ad ogni iterazione dello schermo | ✅ Log puliti, sintetici e stampati solo su variazione reale di valore |
+| **Console/Terminale** | ❌ Intasata da scritte `loop` ad ogni iterazione dello schermo | ✅ Banner visivi con icone (`════`) e log ad albero (`   └─ 🚗`) |
 | **Spegnimento Funzioni** | ❌ `stopCV` non fermava i thread background dei motori | ✅ Arresto istantaneo dei motori e dei thread con `fuc.pause()` |
 | **Simulazione Grafica** | ❌ Assente (solo terminale di testo) | ✅ Arena 2D interattiva, telecamera FPV 3D e tracciato a linea nera |
-| **Struttura Simulatore** | ❌ File monolitici lunghi e confusi | ✅ Architettura modulare pulita divisi per cartelle `css/` e `js/` |
+| **Struttura Simulatore** | ❌ File monolitici lunghi e confusi | ✅ Architettura modulare: `kinematics.js`, `sensors.js` e cartella `behaviors/` |
+| **Selettore Engine IA** | ❌ Assente | ✅ Switch nell'interfaccia tra 🧪 `JS Experimental` e 🐍 `Python Server` |

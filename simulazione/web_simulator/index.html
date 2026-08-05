@@ -28,8 +28,15 @@
       </div>
     </div>
 
-    <div style="display:flex; align-items:center; gap:16px;">
-      <span class="mode-badge" id="modeBadge">MODE: MANUAL (PT)</span>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <!-- Engine Selector Toggle -->
+      <div class="engine-selector">
+        <span style="font-size:11px; font-weight:700; color:var(--text-muted); padding-left:4px;">ENGINE:</span>
+        <button id="btnEngineJS" class="engine-btn active" onclick="setEngineMode('JS')">🧪 JS Experimental</button>
+        <button id="btnEnginePython" class="engine-btn" onclick="setEngineMode('PYTHON')">🐍 Python Server</button>
+      </div>
+
+      <span class="mode-badge" id="modeBadge">MODE: MANUAL (PT) | 🧪 ENGINE: JS EXPERIMENTAL</span>
       <div class="status-badge" id="wsStatus">
         <div class="status-dot"></div> CONNECTING WEBSOCKET...
       </div>
@@ -149,11 +156,18 @@
 
   <!-- JavaScript Modulari -->
   <script src="/simulator/js/state.js"></script>
-  <script src="/simulator/js/websocket.js"></script>
-  <script src="/simulator/js/controls.js"></script>
+  <script src="/simulator/js/kinematics.js"></script>
+  <script src="/simulator/js/sensors.js"></script>
+  <script src="/simulator/js/behaviors/automatic.js"></script>
+  <script src="/simulator/js/behaviors/find_color.js"></script>
+  <script src="/simulator/js/behaviors/track_line.js"></script>
+  <script src="/simulator/js/behaviors/track_light.js"></script>
+  <script src="/simulator/js/behaviors/keep_distance.js"></script>
   <script src="/simulator/js/physics.js"></script>
   <script src="/simulator/js/render_arena.js"></script>
   <script src="/simulator/js/render_fpv.js"></script>
+  <script src="/simulator/js/websocket.js"></script>
+  <script src="/simulator/js/controls.js"></script>
   <script src="/simulator/js/main.js"></script>
 </body>
 </html>

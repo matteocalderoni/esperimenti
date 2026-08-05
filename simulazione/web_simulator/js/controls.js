@@ -82,3 +82,22 @@ function initMouseInteraction() {
     isDragging = null;
   });
 }
+
+function setEngineMode(mode) {
+  robotState.engineMode = mode;
+  
+  const btnJS = document.getElementById('btnEngineJS');
+  const btnPy = document.getElementById('btnEnginePython');
+
+  if (btnJS && btnPy) {
+    if (mode === 'JS') {
+      btnJS.className = 'engine-btn active';
+      btnPy.className = 'engine-btn';
+    } else {
+      btnJS.className = 'engine-btn';
+      btnPy.className = 'engine-btn python-active';
+    }
+  }
+
+  updateModeBadge();
+}

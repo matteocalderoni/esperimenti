@@ -24,8 +24,9 @@ const robotState = {
   policeActive: false,
   policeState: 0,
 
-  // Stato Funzione
-  activeMode: 'PT'    // 'PT', 'findColor', 'trackLine', 'automatic', 'police', 'keepDistance', 'trackLight'
+  // Stato Funzione & Engine Executore
+  activeMode: 'PT',   // 'PT', 'findColor', 'trackLine', 'automatic', 'police', 'keepDistance', 'trackLight'
+  engineMode: 'JS'    // 'JS' (Sperimentale / Client) oppure 'PYTHON' (Backend Server)
 };
 
 // Mappa Ostacoli e Tracciato nell'Arena (Canvas 700x520)
@@ -64,13 +65,16 @@ function updateModeBadge() {
   if (!badge) return;
 
   const modeNames = {
-    'PT': 'MODE: MANUAL (PT)',
-    'findColor': 'MODE: OPENCV COLOR TRACKING',
-    'automatic': 'MODE: AUTOMATIC OBSTACLE AVOIDANCE',
-    'trackLine': 'MODE: LINE TRACKING (IR)',
-    'police': 'MODE: POLICE STROBE LIGHTS',
-    'trackLight': 'MODE: LIGHT TRACKING',
-    'keepDistance': 'MODE: KEEP DISTANCE (RADAR)'
+    'PT': 'MANUAL (PT)',
+    'findColor': 'OPENCV COLOR TRACKING',
+    'automatic': 'AUTOMATIC OBSTACLE AVOIDANCE',
+    'trackLine': 'LINE TRACKING (IR)',
+    'police': 'POLICE STROBE LIGHTS',
+    'trackLight': 'LIGHT TRACKING',
+    'keepDistance': 'KEEP DISTANCE (RADAR)'
   };
-  badge.innerText = modeNames[robotState.activeMode] || `MODE: ${robotState.activeMode.toUpperCase()}`;
+  const modeLabel = modeNames[robotState.activeMode] || robotState.activeMode.toUpperCase();
+  const engineLabel = robotState.engineMode === 'JS' ? '🧪 ENGINE: JS EXPERIMENTAL' : '🐍 ENGINE: PYTHON SERVER';
+
+  badge.innerText = `MODE: ${modeLabel} | ${engineLabel}`;
 }
