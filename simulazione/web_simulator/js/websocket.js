@@ -21,7 +21,11 @@ function initWebSocket() {
     ws.onmessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
-        handleServerResponse(msg);
+        if (msg && msg.type === 'command') {
+          applyLocalCommand(msg.value);
+        } else {
+          handleServerResponse(msg);
+        }
       } catch (e) {}
     };
 

@@ -1,0 +1,8 @@
+pyzmq
+opencv-python
+numpy
+flask
+flask-cors
+websockets
+psutil
+imutils

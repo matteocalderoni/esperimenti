@@ -14,21 +14,16 @@ Il progetto si articola nelle seguenti cartelle principali:
 
 ```text
 esperimenti/
-├── ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/
-│   ├── Datasheet/      # Fogli tecnici dei chip e componenti elettronici usati
-│   ├── Tutorial/       # Guide dettagliate in formato PDF divise per capitoli
-│   └── Code/           # Logica del robot (Server, Client ed Esempi di test)
-├── mock_hardware/      # Layer di simulazione driver hardware per PC/Mac senza RPi
-├── simulazione/        # Percorso didattico a 6 capitoli, test unitari e Web Simulator 2D
-│   ├── guide/          # Tutorial in Markdown (capitoli 01-06 e piano didattico)
-│   ├── web_simulator/  # Simulatore grafico 2D modulare (HTML, CSS, JS)
-│   │   ├── index.html  # Entry point della Dashboard
-│   │   ├── css/        # base.css, layout.css, components.css, telemetry.css
-│   │   └── js/         # state.js, kinematics.js, sensors.js, physics.js, render_*, controls.js, main.js
-│   │       └── behaviors/ # automatic.js, find_color.js, track_line.js, track_light.js, keep_distance.js
-│   └── test_passo_*.py # Script di test automatico per ogni capitolo
+├── robot_server/       # Il cervello del robot (Flask, WebSockets, Driver hardware)
+├── desktop_client/     # Il telecomando grafico (UI modularizzata in Tkinter)
+├── mock_hardware/      # Emulatore driver hardware per PC/Mac senza Raspberry Pi
+├── simulazione/        # Web Simulator 2D, guide e script di test
+│   ├── guide/          # Tutorial in Markdown (capitoli 01-06, guide refactoring)
+│   └── web_simulator/  # Dashboard 2D del simulatore (HTML, CSS, JS)
+├── magazzino/          # Archivio originale (Datasheet chip e Tutorial PDF Adeept)
+├── costituzione.md     # Regole ferree di sviluppo (SRP, Max 150 righe)
 ├── README.md           # Documentazione generale del progetto
-└── modifiche_e_simulazione.md # Registro di tutte le modifiche apportate alla codebase
+└── modifiche_e_simulazione.md # Registro modifiche e bugfix
 ```
 
 ---
@@ -37,12 +32,13 @@ esperimenti/
 
 La cartella `Server/` (divisa in `Server_OrdinaryWheels` e `Server_MecanumWheels`) gestisce il robot tramite una combinazione di Web Server (Flask) e WebSocket Server, estesa con supporto alla simulazione locale su PC/Mac.
 
-### 1. Avvio e Connettività
+### 1. Avvio e Connettività Unificata
 * **Hotspot & Server Reale**: Scripts [setup_OrdinaryWheels.py](file:///Users/mauroi/Documents/esperimenti/ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/setup_OrdinaryWheels.py) e [wifi_hotspot_manager.sh](file:///Users/mauroi/Documents/esperimenti/ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/wifi_hotspot_manager.sh) per Raspberry Pi OS.
-* **Server Web ([app.py](file:///Users/mauroi/Documents/esperimenti/ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels/app.py)) & WebSocket ([WebServer.py](file:///Users/mauroi/Documents/esperimenti/ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels/WebServer.py))**:
+* **Server Web ([app.py](file:///Users/mauroi/Documents/esperimenti/robot_server/app.py)) & Net Server ([WebServer.py](file:///Users/mauroi/Documents/esperimenti/robot_server/WebServer.py))**:
   * Flask serve l'interfaccia Vue.js precompilata, il flusso MJPEG della telecamera (`/video_feed`) ed il **Simulatore Virtuale 2D** (`/simulator`).
-  * WebSocket gestisce comandi a bassa latenza su porta `8888` (motori, servomotori, LED, telemetria).
-  * **Sistema di Logging con Banner e Tree Indentation**: Ogni comando WebSocket stampa un banner grafico ben visibile (`════`) ed i log dei motori/servomotori rientrati (`   └─ 🚗`), sopprimendo le righe duplicate inutili.
+  * `WebServer.py` gestisce sia il **WebSocket server (porta `8888`)** per il simulatore web, sia il **TCP Socket server (porta `10223`)** in un thread separato per il telecomando desktop.
+  * **Broadcast e Sincronizzazione in tempo reale**: Qualsiasi comando ricevuto via TCP dal telecomando desktop viene automaticamente convertito e inviato in broadcast tramite WebSocket al simulatore web del browser. In questo modo il telecomando può pilotare contemporaneamente sia la macchina reale sia la simulazione nel browser!
+  * **Sistema di Logging con Banner e Tree Indentation**: Ogni comando di rete stampa un banner grafico ben visibile (`═`) e i log dei motori/servomotori rientrati (`   └─`), sopprimendo le righe duplicate inutili.
 
 ### 2. Layer Mock Hardware (`mock_hardware/`)
 Permette di eseguire l'intera codebase su qualsiasi PC/Mac senza librerie Raspberry Pi reali:
@@ -61,18 +57,58 @@ Un'interfaccia grafica modulare responsive per il browser raggiungibile su **`ht
 
 ---
 
-## 🚀 Come Eseguire la Simulazione
+## 🚀 Istruzioni di Avvio Semplificate
 
-Per avviare il server in modalità simulazione su PC/Mac:
+Abbiamo creato tre script dedicati per gestire facilmente i diversi flussi di lavoro:
 
+### 1. Avviare la Simulazione Completa (PC/Mac)
+Questo script avvia il server locale con l'hardware simulato (Mock) ed il telecomando grafico in contemporanea:
 ```bash
-PYTHONPATH=mock_hardware python3 ADR036-Adeept_4WD_Smart_Car_Kit_for_RPi-20251215/Code/Adeept_4WD_Smart_Car_for_RPi/Server/Server_OrdinaryWheels/WebServer.py
+./start_simulation.py
+```
+*Naviga quindi su [http://127.0.0.1:5000/simulator](http://127.0.0.1:5000/simulator) nel browser e inserisci `127.0.0.1` nel telecomando per iniziare ad usarlo.*
+
+### 2. Avviare solo il Telecomando Desktop (Client)
+Utile per connettersi ad un server già avviato (locale o sulla macchina reale via Wi-Fi):
+```bash
+./start_client.py
+```
+*Inserisci l'indirizzo IP del robot (es. `192.168.1.XX`) nel campo **IP Address** e connettiti.*
+
+### 3. Avviare il Server sul Robot Reale (Raspberry Pi)
+Questo comando avvia il server utilizzando i veri driver elettronici della macchina. **Deve essere lanciato sul Raspberry Pi reale**:
+```bash
+./start_real_server.py
 ```
 
-Naviga quindi con il browser su:
-* **Interfaccia Robot Reale**: `http://localhost:5000`
-* **Simulatore 2D Interattivo**: `http://localhost:5000/simulator`
-* **Esecuzione Test Didattici**: `python3 simulazione/test_passo_6.py`
+---
+
+## ⚙️ Istruzioni di Avvio Manuale (Per Debug o Log separati)
+
+Se preferisci controllare manualmente i singoli processi:
+
+### 1. Attivare il Virtual Environment
+In ogni nuovo terminale che apri:
+```bash
+source venv/bin/activate
+```
+
+### 2. Avviare il Server Robot (Mock)
+```bash
+cd robot_server
+PYTHONPATH=../mock_hardware python WebServer.py
+```
+
+### 4. Accedere al Simulatore 2D nel Browser
+Naviga su:
+* **Simulatore Web 2D**: [http://127.0.0.1:5000/simulator](http://127.0.0.1:5000/simulator)
+* **Pannello Classico**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
+
+### 5. Eseguire i Test Didattici
+Dalla radice del progetto (con `venv` attivo):
+```bash
+PYTHONPATH=mock_hardware python simulazione/test_passo_6.py
+```
 
 ---
 
