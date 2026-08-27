@@ -2,6 +2,11 @@
 // Gestione della Cinematica 4WD e Collisioni Fisiche Rigide
 
 function updateKinematics() {
+  // Gestione cooldown collisione
+  if (robotState.collisionCooldown > 0) {
+    robotState.collisionCooldown--;
+  }
+
   // 1. Integrazione posizione veicolo (Moto Cartesiano 2D)
   robotState.angle += robotState.steering;
   robotState.x += Math.cos(robotState.angle) * robotState.speed;
@@ -27,11 +32,40 @@ function updateKinematics() {
 
       const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
-      if (minOverlap === overlapLeft) robotState.x = w.x - carR;
-      else if (minOverlap === overlapRight) robotState.x = w.x + w.w + carR;
-      else if (minOverlap === overlapTop) robotState.y = w.y - carR;
-      else if (minOverlap === overlapBottom) robotState.y = w.y + w.h + carR;
+      let steerDir = -1; // Default: sterzo a sinistra
+      let px = 0, py = 0;
+      if (minOverlap === overlapLeft) {
+        robotState.x = w.x - carR;
+        steerDir = -1; // Ostacolo a destra -> sterza a sinistra
+        px = -1; py = 0;
+      } else if (minOverlap === overlapRight) {
+        robotState.x = w.x + w.w + carR;
+        steerDir = 1;  // Ostacolo a sinistra -> sterza a destra
+        px = 1; py = 0;
+      } else if (minOverlap === overlapTop) {
+        robotState.y = w.y - carR;
+        // Urto frontale: decide in base al sensore di linea attivo o all'ultima memoria salvata
+        if (robotState.irSensors[0] === 0) steerDir = -1;      // Linea a sinistra -> gira a sinistra
+        else if (robotState.irSensors[2] === 0) steerDir = 1;  // Linea a destra -> gira a destra
+        else steerDir = (robotState.lastLineSide === 'right') ? 1 : -1; // Fallback sulla memoria
+        px = 0; py = -1;
+      } else if (minOverlap === overlapBottom) {
+        robotState.y = w.y + w.h + carR;
+        if (robotState.irSensors[0] === 0) steerDir = -1;
+        else if (robotState.irSensors[2] === 0) steerDir = 1;
+        else steerDir = (robotState.lastLineSide === 'right') ? 1 : -1;
+        px = 0; py = 1;
+      }
 
+      robotState.recoverySteeringDir = steerDir;
+
+      // Calcola se la direzione del push-out (via di fuga) è concorde con la rotta del robot
+      const hx = Math.cos(robotState.angle);
+      const hy = Math.sin(robotState.angle);
+      const dot = hx * px + hy * py;
+      robotState.recoverySpeedSign = (dot > 0) ? 1 : -1;
+
+      robotState.collisionCooldown = 50; // Avvia la manovra di recupero (50 frame)
       if (robotState.speed > 0) robotState.speed = -0.4;
     }
   }

@@ -24,16 +24,13 @@ function runFindColorBehavior() {
   while (bodyAngleDiff < -Math.PI) bodyAngleDiff += Math.PI * 2;
   while (bodyAngleDiff > Math.PI) bodyAngleDiff -= Math.PI * 2;
 
-  // Se un muro sbarra la strada di fronte (< 35cm), esegue l'aggiramento in MARCIA AVANTI (evita retromarcia cieca contro i muri posteriori)
-  if (robotState.ultrasonicDist < 0.35) {
-    robotState.speed = 1.0; // Avanzamento moderato in avanti
-    // Sterza in marcia avanti verso l'estremità aperta dell'ostacolo (in base al Pan della testa)
-    robotState.steering = (robotState.panAngle < 0) ? 0.08 : -0.08;
-  } else if (dist > 70) {
+  if (dist > 70) {
     robotState.steering = bodyAngleDiff * 0.08;
-    robotState.speed = Math.min(2.0, (dist - 65) * 0.025); // avanzamento graduale verso il target
+    robotState.speed = Math.min(1.8, (dist - 65) * 0.025); // avanzamento graduale verso il target
   } else {
     robotState.speed = 0; // Target raggiunto in sicurezza
     robotState.steering = 0;
   }
 }
+
+registerBehavior('findColor', runFindColorBehavior);

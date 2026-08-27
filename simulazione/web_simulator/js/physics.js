@@ -25,19 +25,26 @@ function updatePhysics() {
   updateTelemetryUI();
 }
 
+
 function executeJSBehaviors() {
   const mode = robotState.activeMode;
 
-  if (mode === 'automatic') {
-    runAutomaticBehavior();
-  } else if (mode === 'findColor') {
-    runFindColorBehavior();
-  } else if (mode === 'trackLine') {
-    runTrackLineBehavior();
-  } else if (mode === 'trackLight') {
-    runTrackLightBehavior();
-  } else if (mode === 'keepDistance') {
-    runKeepDistanceBehavior();
+  // 1. Guardia Ostacoli Modulare Globale
+  if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles()) {
+    return;
+  }
+
+  // 3. Manovra di disimpegno solo in caso di urto fisico effettivo con pareti (attivato da kinematics.js)
+  if (robotState.collisionCooldown > 0) {
+    robotState.speed = -0.8;
+    robotState.steering = 0.05 * robotState.recoverySteeringDir;
+    return;
+  }
+
+  // 4. Esecuzione del comportamento specifico della modalità
+  const behavior = jsBehaviors[mode];
+  if (behavior) {
+    behavior();
   }
 }
 

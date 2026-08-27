@@ -70,13 +70,14 @@ function applyLocalCommand(cmd) {
   else if (cmd === 'police') { robotState.policeActive = true; robotState.activeMode = 'police'; }
   else if (cmd === 'policeOff') { robotState.policeActive = false; robotState.activeMode = 'PT'; }
   else if (cmd === 'findColor') robotState.activeMode = 'findColor';
-  else if (cmd === 'automatic') robotState.activeMode = 'automatic';
+  else if (cmd === 'automatic') { robotState.activeMode = 'automatic'; robotState.targetHeading = null; }
   else if (cmd === 'trackLine') robotState.activeMode = 'trackLine';
   else if (cmd === 'trackLight') robotState.activeMode = 'trackLight';
   else if (cmd === 'keepDistance') robotState.activeMode = 'keepDistance';
   else if (cmd === 'stopCV' || cmd === 'automaticOff' || cmd === 'trackLineOff' || cmd === 'trackLightOff' || cmd === 'keepDistanceOff') {
     robotState.activeMode = 'PT';
     robotState.policeActive = false;
+    robotState.targetHeading = null;
     robotState.speed = 0;
     robotState.steering = 0;
     robotState.panAngle = 0;

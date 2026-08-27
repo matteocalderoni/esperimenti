@@ -11,3 +11,5 @@ function runKeepDistanceBehavior() {
     robotState.speed = 0;
   }
 }
+
+registerBehavior('keepDistance', runKeepDistanceBehavior);

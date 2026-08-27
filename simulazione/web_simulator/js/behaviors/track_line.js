@@ -3,6 +3,14 @@
 
 function runTrackLineBehavior() {
   const [left, center, right] = robotState.irSensors;
+
+  // Aggiorna la memoria dell'ultimo lato in cui è stata vista la linea
+  if (left === 0 && right === 1) {
+    robotState.lastLineSide = 'left';
+  } else if (right === 0 && left === 1) {
+    robotState.lastLineSide = 'right';
+  }
+
   robotState.panAngle = 0;
 
   if (center === 0) {
@@ -19,3 +27,5 @@ function runTrackLineBehavior() {
     robotState.steering = 0.05;
   }
 }
+
+registerBehavior('trackLine', runTrackLineBehavior);

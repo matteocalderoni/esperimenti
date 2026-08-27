@@ -17,6 +17,8 @@ const robotState = {
 
   // Sensori
   ultrasonicDist: 0.5,// in metri (0.0 a 2.0)
+  leftDist: 0.5,      // Raggio sinistro
+  rightDist: 0.5,     // Raggio destro
   irSensors: [1, 1, 1], // [Sinistra, Centro, Destra] 1=Bianco (fuori pista), 0=Nero (sulla linea)
 
   // Attuatori & Luci
@@ -26,7 +28,14 @@ const robotState = {
 
   // Stato Funzione & Engine Executore
   activeMode: 'PT',   // 'PT', 'findColor', 'trackLine', 'automatic', 'police', 'keepDistance', 'trackLight'
-  engineMode: 'JS'    // 'JS' (Sperimentale / Client) oppure 'PYTHON' (Backend Server)
+  engineMode: 'JS',    // 'JS' (Sperimentale / Client) oppure 'PYTHON' (Backend Server)
+  collisionCooldown: 0, // Cooldown per la manovra di recupero dopo un urto
+  recoverySteeringDir: -1, // Direzione di sterzo durante il recupero (-1 = sinistra, 1 = destra)
+  lastLineSide: 'left', // Memoria dell'ultimo lato in cui è stata vista la linea nera
+  recoverySpeedSign: -1, // Segno della velocità di recupero (-1 = retromarcia, 1 = marcia avanti)
+  targetHeading: null,  // Rotta desiderata memorizzata per l'evitamento predittivo
+  stuckFrames: 0,       // Contatore frame consecutivi in zona ostacolo (stuck detection)
+  stuckEscaping: false  // Manovra di fuga attiva
 };
 
 // Mappa Ostacoli e Tracciato nell'Arena (Canvas 700x520)
@@ -77,4 +86,11 @@ function updateModeBadge() {
   const engineLabel = robotState.engineMode === 'JS' ? '🧪 ENGINE: JS EXPERIMENTAL' : '🐍 ENGINE: PYTHON SERVER';
 
   badge.innerText = `MODE: ${modeLabel} | ${engineLabel}`;
+}
+
+// Global behaviors registry for JS Experimental Mode
+const jsBehaviors = {};
+
+function registerBehavior(mode, behaviorFunc) {
+  jsBehaviors[mode] = behaviorFunc;
 }

@@ -12,11 +12,7 @@ function runTrackLightBehavior() {
   while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
   while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
 
-  // Protezione per angoli ciechi: se un ostacolo o una parete blocca il cammino (< 0.35m), devia per schivare il muro
-  if (robotState.ultrasonicDist < 0.35) {
-    robotState.speed = -0.6;
-    robotState.angle += 0.14; // devia per disincastrarsi dall'angolo cieco
-  } else if (distToLight > 60) {
+  if (distToLight > 60) {
     robotState.steering = diffAngle * 0.08;
     robotState.speed = Math.min(2.0, distToLight * 0.02);
   } else {
@@ -24,3 +20,5 @@ function runTrackLightBehavior() {
     robotState.steering = 0;
   }
 }
+
+registerBehavior('trackLight', runTrackLightBehavior);

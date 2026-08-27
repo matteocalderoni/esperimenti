@@ -2,35 +2,37 @@
 // Emulazione dei Sensori (Ultrasuoni HC-SR04 ed Infrarossi IR Seguipista)
 
 function updateSensors() {
-  // 1. Calcolo cono di rilevamento ultrasuoni (Multi-Ray Cone Sensing: Raggio Centro 0°, Sinistra -22°, Destra +22°)
-  const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
-  const anglesToTest = [
-    totalHeadAngle,
-    totalHeadAngle - 0.38, // Raggio cono sinistro (~22°)
-    totalHeadAngle + 0.38  // Raggio cono destro (~22°)
-  ];
-  let minDist = 2.0;
+  // Sensore Ultrasuoni HC-SR04 montato sul servo pan:
+  // 3 raggi che simulano il cono d'apertura reale del sensore (~28° totali)
+  const headAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
 
-  for (const testAngle of anglesToTest) {
+  function castRay(angle) {
     for (let r = 10; r < 320; r += 5) {
-      const rx = robotState.x + Math.cos(testAngle) * r;
-      const ry = robotState.y + Math.sin(testAngle) * r;
-
+      const rx = robotState.x + Math.cos(angle) * r;
+      const ry = robotState.y + Math.sin(angle) * r;
       if (rx < 15 || rx > arenaCanvas.width - 15 || ry < 15 || ry > arenaCanvas.height - 15) {
-        minDist = Math.min(minDist, r / 160.0);
-        break;
+        return r / 160.0;
       }
       for (const w of arenaObjects.walls) {
         if (rx >= w.x && rx <= w.x + w.w && ry >= w.y && ry <= w.y + w.h) {
-          minDist = Math.min(minDist, r / 160.0);
-          break;
+          return r / 160.0;
         }
       }
     }
+    return 2.0;
   }
-  robotState.ultrasonicDist = Math.max(0.05, minDist);
 
-  // 2. Calcolo Posizione dei 3 Sensori IR sulla parte frontale inferiore
+  // Raggio centrale + 2 raggi laterali stretti (cono ~28°) del sensore reale
+  const centerDist = castRay(headAngle);
+  const leftDist   = castRay(headAngle - 0.25); // ~14° sinistra
+  const rightDist  = castRay(headAngle + 0.25); // ~14° destra
+
+  // leftDist e rightDist usati da obstacle_guard per scegliere la direzione di fuga
+  robotState.leftDist  = leftDist;
+  robotState.rightDist = rightDist;
+  robotState.ultrasonicDist = Math.max(0.05, Math.min(centerDist, leftDist, rightDist));
+
+  // Sensori IR sulla parte frontale inferiore
   updateIRSensors();
 }
 
