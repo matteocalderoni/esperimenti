@@ -193,6 +193,19 @@ def functionSelect(command_input, response):
         if OLED_connection:
             screen.screen_show(5,'KeepDistance')
 
+    elif 'exploration' == command_input:
+        fuc.exploration()
+        if OLED_connection:
+            screen.screen_show(5,'Exploration')
+
+    elif 'explorationOff' == command_input:
+        if OLED_connection:
+            screen.screen_show(5,'FUNCTION OFF')
+        fuc.pause()
+        move.motorStop()
+        time.sleep(0.5)
+        move.motorStop()
+
     elif 'keepDistanceOff' == command_input:
         if OLED_connection:
             screen.screen_show(5,'FUNCTION OFF')
@@ -380,17 +393,23 @@ def print_command_banner(cmd_input):
         'trackLineOff': '⏹ MODALITÀ: DISATTIVA SEGUIPISTA IR',
         'police': '🚨 EFFETTO VISIVO: LUCI POLIZIA WS2812',
         'policeOff': '⏹ EFFETTO VISIVO: DISATTIVA LUCI POLIZIA',
+        'exploration': '🗺️ MODALITÀ: ESPLORAZIONE & MAPPATURA 2D',
+        'explorationOff': '⏹ MODALITÀ: DISATTIVA ESPLORAZIONE',
         'stopCV': '🛑 ARRESTO GENERALE: DISATTIVA TUTTE LE FUNZIONI',
         'scan': '🔍 SCANNER ULTRASUONI: RADAR SCAN 180°'
     }
     if isinstance(cmd_input, dict):
-        label = f"JSON DATA: {cmd_input}"
+        if cmd_input.get('title') == 'exploration_telemetry':
+            label = "📡 TELEMETRIA ESPLORAZIONE (Pose & Radar)"
+        else:
+            label = f"JSON DATA: {cmd_input.get('title', 'Unknown')}"
     else:
         label = title_map.get(str(cmd_input), f"COMANDO: {cmd_input}")
 
-    print("\n" + "═" * 70)
-    print(f"📥 [COMANDO WEBSOCKET RICEVUTO] -> {label}")
-    print("═" * 70)
+    if not (isinstance(cmd_input, dict) and cmd_input.get('title') == 'exploration_telemetry'):
+        print("\n" + "═" * 70)
+        print(f"📥 [COMANDO WEBSOCKET RICEVUTO] -> {label}")
+        print("═" * 70)
 
 async def recv_msg(websocket):
     global speed_set, modeSelect
@@ -462,6 +481,14 @@ async def recv_msg(websocket):
             if data.get('title') == "findColorSet":
                 color = data.get('data', [0, 0, 0])
                 flask_app.colorFindSet(color[0], color[1], color[2])
+            elif data.get('title') == "exploration_telemetry":
+                payload = data.get('data', {})
+                pose = payload.get('pose', {'x': 350, 'y': 150, 'theta': 0})
+                scan = payload.get('scan', [])
+                scan_angles = payload.get('scanAngles', [-60, -30, 0, 30, 60])
+                frame = payload.get('frame')
+                if 'exploration' in fuc.behaviors:
+                    fuc.behaviors['exploration'].update_telemetry(pose, scan, scan_angles, frame)
 
         if data != 'get_info':
             print(f"[WEBSOCKET RECV] Comando ricevuto: {data}")

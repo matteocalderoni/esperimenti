@@ -3,7 +3,7 @@
 
 function checkAndHandleObstacles(options = {}) {
   const mode = robotState.activeMode;
-  if (mode === 'PT' || mode === 'automatic' || mode === 'exploration') return false;
+  if (mode === 'PT') return false;
 
   const stopThreshold  = options.stopThreshold  || 0.30;
   const glideThreshold = options.glideThreshold  || 0.80;

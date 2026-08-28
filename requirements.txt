@@ -6,3 +6,5 @@ flask-cors
 websockets
 psutil
 imutils
+scipy
+requests

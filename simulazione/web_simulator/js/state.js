@@ -27,7 +27,7 @@ const robotState = {
   policeState: 0,
 
   // Stato Funzione & Engine Executore
-  activeMode: 'PT',   // 'PT', 'findColor', 'trackLine', 'automatic', 'police', 'keepDistance', 'trackLight'
+  activeMode: 'PT',   // 'PT', 'findColor', 'trackLine', 'automatic', 'police', 'keepDistance', 'trackLight', 'exploration'
   engineMode: 'JS',    // 'JS' (Sperimentale / Client) oppure 'PYTHON' (Backend Server)
   collisionCooldown: 0, // Cooldown per la manovra di recupero dopo un urto
   recoverySteeringDir: -1, // Direzione di sterzo durante il recupero (-1 = sinistra, 1 = destra)
@@ -80,7 +80,8 @@ function updateModeBadge() {
     'trackLine': 'LINE TRACKING (IR)',
     'police': 'POLICE STROBE LIGHTS',
     'trackLight': 'LIGHT TRACKING',
-    'keepDistance': 'KEEP DISTANCE (RADAR)'
+    'keepDistance': 'KEEP DISTANCE (RADAR)',
+    'exploration': '🗺️ SLAM EXPLORATION'
   };
   const modeLabel = modeNames[robotState.activeMode] || robotState.activeMode.toUpperCase();
   const engineLabel = robotState.engineMode === 'JS' ? '🧪 ENGINE: JS EXPERIMENTAL' : '🐍 ENGINE: PYTHON SERVER';

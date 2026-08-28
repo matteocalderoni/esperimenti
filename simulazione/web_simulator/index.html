@@ -46,44 +46,63 @@
   <!-- Dashboard Grid -->
   <main class="dashboard-grid">
 
-    <!-- Left Column: Arena Canvas & Telemetry -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">
-          <span class="card-title-icon">🗺️</span> Campo di Prova Virtuale (Arena Top-Down 2D)
+    <!-- Left Column: Arena Canvas & SLAM Map Comparison & Telemetry -->
+    <div>
+      <div class="maps-comparison-grid">
+        <!-- Card 1: Arena Reale (Ground Truth) -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">🗺️</span> Campo di Prova (Arena Reale 2D)
+            </div>
+            <span class="mode-badge" style="background:rgba(131,56,236,0.15); border-color:var(--accent-purple); color:#c084fc">GROUND TRUTH</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="arenaCanvas"></canvas>
+          </div>
         </div>
-        <div style="font-size:12px; color:var(--text-muted);">Fisica veicolo 4WD • Sensore Ultrasuoni • LED RGB</div>
-      </div>
 
-      <div class="canvas-container">
-        <canvas id="arenaCanvas"></canvas>
+        <!-- Card 2: Piantina Rilevata (SLAM Occupancy Grid) -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">📡</span> Piantina Rilevata (SLAM Live 2D)
+            </div>
+            <span class="mode-badge" style="background:rgba(0,245,212,0.15); border-color:var(--accent-green); color:var(--accent-green)">OCCUPANCY GRID</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="mapCanvas"></canvas>
+          </div>
+        </div>
       </div>
 
       <!-- Telemetry Cards -->
-      <div class="telemetry-grid">
-        <div class="telemetry-item">
-          <div class="telemetry-label">Velocità Motori</div>
-          <div class="telemetry-value" id="teleSpeed">0 %</div>
-        </div>
-        <div class="telemetry-item">
-          <div class="telemetry-label">Angolo di Rotta</div>
-          <div class="telemetry-value" id="teleHeading">0°</div>
-        </div>
-        <div class="telemetry-item">
-          <div class="telemetry-label">Servo Pan (Testa)</div>
-          <div class="telemetry-value" id="telePan">0°</div>
-        </div>
-        <div class="telemetry-item">
-          <div class="telemetry-label">Distanza Ostacolo</div>
-          <div class="telemetry-value" id="teleDist">50.0 cm</div>
-        </div>
-        <div class="telemetry-item">
-          <div class="telemetry-label">Temperatura CPU</div>
-          <div class="telemetry-value" id="teleCpuTemp" style="color:var(--accent-amber)">50.0 °C</div>
-        </div>
-        <div class="telemetry-item">
-          <div class="telemetry-label">Uso Memoria RAM</div>
-          <div class="telemetry-value" id="teleRamUse" style="color:var(--accent-pink)">45 %</div>
+      <div class="card" style="margin-top:0px;">
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <div class="telemetry-label">Velocità Motori</div>
+            <div class="telemetry-value" id="teleSpeed">0 %</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Angolo di Rotta</div>
+            <div class="telemetry-value" id="teleHeading">0°</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Servo Pan (Testa)</div>
+            <div class="telemetry-value" id="telePan">0°</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Distanza Ostacolo</div>
+            <div class="telemetry-value" id="teleDist">50.0 cm</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Temperatura CPU</div>
+            <div class="telemetry-value" id="teleCpuTemp" style="color:var(--accent-amber)">50.0 °C</div>
+          </div>
+          <div class="telemetry-item">
+            <div class="telemetry-label">Uso Memoria RAM</div>
+            <div class="telemetry-value" id="teleRamUse" style="color:var(--accent-pink)">45 %</div>
+          </div>
         </div>
       </div>
     </div>
@@ -134,6 +153,7 @@
         <!-- Action Modes Grid -->
         <div style="font-size:12px; color:var(--text-muted); margin-top:14px; margin-bottom:6px;">Modalità Autonome & Effetti:</div>
         <div style="display:flex; flex-direction:column; gap:8px;">
+          <button class="btn-ctrl" style="background:rgba(0,240,255,0.15); border-color:var(--accent-cyan);" onclick="sendCommand('exploration')">🗺️ Esplorazione & Mappatura 2D</button>
           <button class="btn-ctrl" style="background:rgba(131,56,236,0.2); border-color:var(--accent-purple);" onclick="sendCommand('automatic')">🤖 Evitamento Ostacoli Automatico</button>
           <button class="btn-ctrl" style="background:rgba(0,245,212,0.15); border-color:var(--accent-green);" onclick="sendCommand('findColor')">🎯 Inseguimento Colore (OpenCV)</button>
           <button class="btn-ctrl" style="background:rgba(255,0,127,0.15); border-color:var(--accent-pink);" onclick="sendCommand('police')">🚨 Luci della Polizia (WS2812)</button>
@@ -154,21 +174,29 @@
 
   </main>
 
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
   <!-- JavaScript Modulari -->
-  <script src="/simulator/js/state.js?v=29"></script>
-  <script src="/simulator/js/kinematics.js?v=29"></script>
-  <script src="/simulator/js/sensors.js?v=29"></script>
-  <script src="/simulator/js/obstacle_guard.js?v=29"></script>
-  <script src="/simulator/js/behaviors/automatic.js?v=29"></script>
-  <script src="/simulator/js/behaviors/find_color.js?v=29"></script>
-  <script src="/simulator/js/behaviors/track_line.js?v=29"></script>
-  <script src="/simulator/js/behaviors/track_light.js?v=29"></script>
-  <script src="/simulator/js/behaviors/keep_distance.js?v=29"></script>
-  <script src="/simulator/js/physics.js?v=29"></script>
-  <script src="/simulator/js/render_arena.js?v=29"></script>
-  <script src="/simulator/js/render_fpv.js?v=29"></script>
-  <script src="/simulator/js/websocket.js?v=29"></script>
-  <script src="/simulator/js/controls.js?v=29"></script>
-  <script src="/simulator/js/main.js?v=29"></script>
+  <script src="/simulator/js/state.js?v=43"></script>
+  <script src="/simulator/js/kinematics.js?v=43"></script>
+  <script src="/simulator/js/sensors.js?v=43"></script>
+  <script src="/simulator/js/raycasting_sensor.js?v=43"></script>
+  <script src="/simulator/js/three_scene.js?v=43"></script>
+  <script src="/simulator/js/exploration_bridge.js?v=43"></script>
+  <script src="/simulator/js/obstacle_guard.js?v=43"></script>
+  <script src="/simulator/js/behaviors/automatic.js?v=43"></script>
+  <script src="/simulator/js/behaviors/find_color.js?v=43"></script>
+  <script src="/simulator/js/behaviors/track_line.js?v=43"></script>
+  <script src="/simulator/js/behaviors/track_light.js?v=43"></script>
+  <script src="/simulator/js/behaviors/keep_distance.js?v=43"></script>
+  <script src="/simulator/js/behaviors/exploration.js?v=43"></script>
+  <script src="/simulator/js/physics.js?v=43"></script>
+  <script src="/simulator/js/render_arena.js?v=43"></script>
+  <script src="/simulator/js/render_map.js?v=43"></script>
+  <script src="/simulator/js/render_fpv.js?v=43"></script>
+  <script src="/simulator/js/websocket.js?v=43"></script>
+  <script src="/simulator/js/controls.js?v=43"></script>
+  <script src="/simulator/js/main.js?v=43"></script>
 </body>
 </html>

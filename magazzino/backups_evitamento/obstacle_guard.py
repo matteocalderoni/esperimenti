@@ -9,9 +9,6 @@ def check_and_handle_obstacles(dist, mode='automatic', stop_threshold=30, glide_
         - dist < 25cm:           disimpegno in retromarcia
         - 25cm <= dist < 80cm:   decelerazione e sterzata progressive
     """
-    if mode == 'automatic':
-        return False
-
     if mode == 'trackLine':
         if dist < stop_threshold:
             move.motorStop()

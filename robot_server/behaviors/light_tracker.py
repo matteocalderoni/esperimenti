@@ -12,9 +12,9 @@ class LightTrackerBehavior(BaseBehavior):
         self.light_threshold = light_threshold
 
     def process(self, last_status):
-        # 1. Guardia Ostacoli Unificata (Aggiramento Fluido)
+        # 1. Guardia Ostacoli Unificata con soglie ridotte per inseguimento target
         dist = self.context.distRedress()
-        if check_and_handle_obstacles(dist, mode='trackLight'):
+        if check_and_handle_obstacles(dist, mode='trackLight', glide_threshold=40, danger_threshold=22, stop_threshold=20):
             time.sleep(0.1)
             return last_status
 

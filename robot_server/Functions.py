@@ -19,6 +19,7 @@ from behaviors.line_tracker import LineTrackerBehavior
 from behaviors.light_tracker import LightTrackerBehavior
 from behaviors.obstacle_avoider import ObstacleAvoiderBehavior
 from behaviors.distance_keeper import DistanceKeeperBehavior
+from behaviors.room_explorer import RoomExplorerBehavior
 
 # Compatibility Globals
 last_status = None
@@ -77,7 +78,8 @@ class Functions(threading.Thread):
             'automatic': ObstacleAvoiderBehavior(self),
             'trackLine': LineTrackerBehavior(self),
             'trackLight': LightTrackerBehavior(self, self.adc),
-            'keepDistance': DistanceKeeperBehavior(self, self.distRedress)
+            'keepDistance': DistanceKeeperBehavior(self, self.distRedress),
+            'exploration': RoomExplorerBehavior(self)
         }
         self.radar = Radar(scGear)
 
@@ -122,6 +124,10 @@ class Functions(threading.Thread):
 
     def keepDistance(self):
         self.functionMode = 'keepDistance'
+        self.resume()
+
+    def exploration(self):
+        self.functionMode = 'exploration'
         self.resume()
 
     def steady(self, goalPos):

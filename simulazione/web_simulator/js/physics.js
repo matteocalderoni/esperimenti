@@ -29,8 +29,23 @@ function updatePhysics() {
 function executeJSBehaviors() {
   const mode = robotState.activeMode;
 
-  // 1. Guardia Ostacoli Modulare Globale
-  if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles()) {
+  // In modalità esplorazione SLAM, la FSM gestisce il movimento autonomamente
+  // — la guardia ostacoli e il cooldown di recupero sono già nella FSM
+  if (mode === 'exploration') {
+    const behavior = jsBehaviors[mode];
+    if (behavior) behavior();
+    return;
+  }
+
+  // 1. Guardia Ostacoli Modulare Globale con soglie ridotte per inseguimento target (evita conflitti in curva/angolo)
+  let guardOptions = {};
+  if (mode === 'findColor') {
+    guardOptions = { glideThreshold: 0.40, dangerThreshold: 0.22, stopThreshold: 0.20 };
+  } else if (mode === 'trackLight') {
+    guardOptions = { glideThreshold: 0.35, dangerThreshold: 0.22, stopThreshold: 0.20 };
+  }
+
+  if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles(guardOptions)) {
     return;
   }
 

@@ -73,18 +73,41 @@ function applyLocalCommand(cmd) {
   else if (cmd === 'automatic') { robotState.activeMode = 'automatic'; robotState.targetHeading = null; }
   else if (cmd === 'trackLine') robotState.activeMode = 'trackLine';
   else if (cmd === 'trackLight') robotState.activeMode = 'trackLight';
-  else if (cmd === 'keepDistance') robotState.activeMode = 'keepDistance';
-  else if (cmd === 'stopCV' || cmd === 'automaticOff' || cmd === 'trackLineOff' || cmd === 'trackLightOff' || cmd === 'keepDistanceOff') {
+  else if (cmd === 'exploration') {
+    robotState.activeMode = 'exploration';
+    robotState.engineMode = 'JS'; // L'esplorazione richiede il motore JS
+    // Reset griglia SLAM per nuova sessione di mappatura
+    if (typeof initSlamGrid === 'function') {
+      initSlamGrid();
+    } else if (typeof slamMap !== 'undefined') {
+      slamMap.fsmState = 'SCAN_360';
+      slamMap.scanStep = 0;
+      slamMap.scanTimer = 0;
+      slamMap.frontiers = [];
+      slamMap.currentPath = [];
+      slamMap.pathIndex = 0;
+      slamMap.stepCounter = 0;
+      slamMap.stats = { freeCells: 0, wallCells: 0, exploredPct: 0 };
+    }
+    if (typeof startExplorationBridge === 'function') {
+      startExplorationBridge();
+    }
+  }
+  else if (cmd === 'stopCV' || cmd === 'automaticOff' || cmd === 'trackLineOff' || cmd === 'trackLightOff' || cmd === 'keepDistanceOff' || cmd === 'explorationOff') {
     robotState.activeMode = 'PT';
     robotState.policeActive = false;
     robotState.targetHeading = null;
     robotState.speed = 0;
     robotState.steering = 0;
     robotState.panAngle = 0;
+    if (typeof stopExplorationBridge === 'function') {
+      stopExplorationBridge();
+    }
     if (cmd === 'stopCV' && ws && ws.readyState === WebSocket.OPEN) {
       ws.send('automaticOff');
       ws.send('policeOff');
       ws.send('trackLineOff');
+      ws.send('explorationOff');
     }
   }
   updateModeBadge();
