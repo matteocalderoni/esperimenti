@@ -5,7 +5,7 @@ function updatePhysics() {
   // 1. Aggiornamento cinematica 4WD e collisione solida muri
   updateKinematics();
 
-  // 2. Calcolo ultrasuoni (Multi-Ray Bumper Proximity Array per APF) e sensori IR
+  // 2. Calcolo ultrasuoni (Multi-Ray Bumper Proximity Array) e sensori IR
   updateSensors();
 
   // 3. Esecuzione automazioni (solo in modalità JS Experimental)
@@ -17,7 +17,7 @@ function updatePhysics() {
   if (robotState.policeActive || robotState.activeMode === 'police') {
     robotState.policeState = (robotState.policeState + 1) % 12;
     robotState.ledColor = (robotState.policeState < 6) ? '#ff0055' : '#00f0ff';
-  } else if (robotState.ultrasonicDist >= 0.70) {
+  } else if (!robotState.stuckEscaping && robotState.ultrasonicDist >= 0.70) {
     robotState.ledColor = '#00f5d4';
   }
 
@@ -36,19 +36,19 @@ function executeJSBehaviors() {
     return;
   }
 
-  // 2. Guardia Ostacoli con Campi di Potenziale Artificiali (APF)
-  // Durante l'esplorazione è attiva solo negli spostamenti (NAVIGATE), disattivata nelle scansioni testa da fermo
+  // 2. Guardia Ostacoli Unificata:
+  // Durante l'esplorazione è attiva SOLO durante gli spostamenti (NAVIGATE), non durante le scansioni testa da fermo
   const isExplorationMoving = (mode === 'exploration' && typeof slamMap !== 'undefined' && slamMap && slamMap.fsmState === 'NAVIGATE');
   const shouldCheckObstacles = (mode !== 'exploration') || isExplorationMoving;
 
   if (shouldCheckObstacles) {
     let guardOptions = {};
     if (mode === 'findColor') {
-      guardOptions = { dInfluence: 0.40, stopThreshold: 0.20 };
+      guardOptions = { glideThreshold: 0.40, dangerThreshold: 0.20, stopThreshold: 0.20 };
     } else if (mode === 'trackLight') {
-      guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
+      guardOptions = { glideThreshold: 0.35, dangerThreshold: 0.20, stopThreshold: 0.20 };
     } else if (mode === 'exploration') {
-      guardOptions = { dInfluence: 0.50, stopThreshold: 0.20 };
+      guardOptions = { glideThreshold: 0.45, dangerThreshold: 0.22, stopThreshold: 0.20 };
     }
 
     if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles(guardOptions)) {

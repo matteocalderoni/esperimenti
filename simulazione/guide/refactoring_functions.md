@@ -13,6 +13,7 @@ Le singole funzionalità automatiche del robot sono isolate nella cartella `robo
 * **`light_tracker.py`**: Logica di inseguimento della luce (fotoresistenze tramite ADC) con protezione d'emergenza integrata contro ostacoli.
 * **`obstacle_avoider.py`**: Algoritmo reattivo a sweep continuo per l'evitamento degli ostacoli (conforme a quello della simulazione).
 * **`distance_keeper.py`**: Logica per il mantenimento di una distanza costante (soglie a $40\text{ cm}$ e $25\text{ cm}$).
+* **`room_explorer.py`**: Logica avanzata di esplorazione e mappatura continua dell'ambiente (FSM a 4 stati integrata con `OccupancyGrid`, `FrontierPlanner` ed il client semantico `VLMInspector`).
 
 ---
 

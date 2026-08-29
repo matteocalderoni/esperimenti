@@ -1,91 +1,94 @@
 // simulazione/web_simulator/js/sensors.js
-// Emulazione dei Sensori (Ultrasuoni HC-SR04 ed Infrarossi IR Seguipista)
+// Emulazione dei Sensori (Array Bumper Ultrasuoni per APF ed Infrarossi IR)
 
 function updateSensors() {
-  // Sensore Ultrasuoni HC-SR04 montato sul servo pan:
-  // 3 raggi che simulano il cono d'apertura reale del sensore (~28° totali)
+  const cosA = Math.cos(robotState.angle);
+  const sinA = Math.sin(robotState.angle);
   const headAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
 
-  function castRay(angle) {
-    for (let r = 10; r < 320; r += 5) {
-      const rx = robotState.x + Math.cos(angle) * r;
-      const ry = robotState.y + Math.sin(angle) * r;
-      if (rx < 15 || rx > arenaCanvas.width - 15 || ry < 15 || ry > arenaCanvas.height - 15) {
+  function castRayFrom(ox, oy, angle, maxDist = 320) {
+    const W = arenaCanvas ? arenaCanvas.width : 700;
+    const H = arenaCanvas ? arenaCanvas.height : 520;
+    for (let r = 5; r < maxDist; r += 4) {
+      const rx = ox + Math.cos(angle) * r;
+      const ry = oy + Math.sin(angle) * r;
+      if (rx < 12 || rx > W - 12 || ry < 12 || ry > H - 12) {
         return r / 160.0;
       }
-      for (const w of arenaObjects.walls) {
+      for (let i = 0; i < arenaObjects.walls.length; i++) {
+        const w = arenaObjects.walls[i];
         if (rx >= w.x && rx <= w.x + w.w && ry >= w.y && ry <= w.y + w.h) {
           return r / 160.0;
         }
       }
     }
-    return 2.0;
+    return maxDist / 160.0;
   }
 
-  // Raggio centrale + 2 raggi laterali stretti (cono ~28°) del sensore reale
-  const centerDist = castRay(headAngle);
-  const leftDist   = castRay(headAngle - 0.25); // ~14° sinistra
-  const rightDist  = castRay(headAngle + 0.25); // ~14° destra
+  // Sonde sul telaio
+  const fcX = robotState.x + cosA * 22, fcY = robotState.y + sinA * 22;
+  const flX = robotState.x + cosA * 20 - sinA * 15, flY = robotState.y + sinA * 20 + cosA * 15;
+  const frX = robotState.x + cosA * 20 + sinA * 15, frY = robotState.y + sinA * 20 - cosA * 15;
 
-  // leftDist e rightDist usati da obstacle_guard per scegliere la direzione di fuga
-  robotState.leftDist  = leftDist;
-  robotState.rightDist = rightDist;
-  robotState.ultrasonicDist = Math.max(0.05, Math.min(centerDist, leftDist, rightDist));
+  // 9 sonde angolari per il Campo di Potenziale Artificiale (APF)
+  const probeAnglesDeg = [-75, -50, -30, -15, 0, 15, 30, 50, 75];
+  const probes = [];
+  let minLeft = 2.0, minRight = 2.0, minFront = 2.0;
 
-  // Sensori IR sulla parte frontale inferiore
+  for (let i = 0; i < probeAnglesDeg.length; i++) {
+    const relDeg = probeAnglesDeg[i];
+    const relRad = relDeg * Math.PI / 180;
+    const absAngle = robotState.angle + relRad;
+
+    let ox = fcX, oy = fcY;
+    if (relDeg < -20) { ox = flX; oy = flY; }
+    else if (relDeg > 20) { ox = frX; oy = frY; }
+
+    const dist = castRayFrom(ox, oy, absAngle);
+    probes.push({ relRad, relDeg, dist });
+
+    if (relDeg < -10) minLeft = Math.min(minLeft, dist);
+    else if (relDeg > 10) minRight = Math.min(minRight, dist);
+    else minFront = Math.min(minFront, dist);
+  }
+
+  const panDist = castRayFrom(fcX, fcY, headAngle);
+  minFront = Math.min(minFront, panDist);
+
+  robotState.proximityProbes = probes;
+  robotState.leftDist = minLeft;
+  robotState.rightDist = minRight;
+  robotState.frontDist = minFront;
+  robotState.ultrasonicDist = Math.max(0.05, Math.min(minFront, minLeft, minRight));
+
   updateIRSensors();
 }
 
 function updateIRSensors() {
-  const frontDist = 20;   // offset frontale dal centro robot
-  const sensorWidth = 10; // offset laterale sensori sinistro e destro
+  const frontDist = 20, sensorWidth = 10;
+  const cosA = Math.cos(robotState.angle), sinA = Math.sin(robotState.angle);
 
-  const cosA = Math.cos(robotState.angle);
-  const sinA = Math.sin(robotState.angle);
+  const cx = robotState.x + cosA * frontDist, cy = robotState.y + sinA * frontDist;
+  const lx = robotState.x + cosA * frontDist - sinA * sensorWidth, ly = robotState.y + sinA * frontDist + cosA * sensorWidth;
+  const rx = robotState.x + cosA * frontDist + sinA * sensorWidth, ry = robotState.y + sinA * frontDist - cosA * sensorWidth;
 
-  // Sensore Centro
-  const cx = robotState.x + cosA * frontDist;
-  const cy = robotState.y + sinA * frontDist;
-
-  // Sensore Sinistro
-  const lx = robotState.x + cosA * frontDist - sinA * sensorWidth;
-  const ly = robotState.y + sinA * frontDist + cosA * sensorWidth;
-
-  // Sensore Destro
-  const rx = robotState.x + cosA * frontDist + sinA * sensorWidth;
-  const ry = robotState.y + sinA * frontDist - cosA * sensorWidth;
-
-  robotState.irSensors[0] = isPointOnLineTrack(lx, ly) ? 0 : 1; // Left (0 = Nero)
-  robotState.irSensors[1] = isPointOnLineTrack(cx, cy) ? 0 : 1; // Center (0 = Nero)
-  robotState.irSensors[2] = isPointOnLineTrack(rx, ry) ? 0 : 1; // Right (0 = Nero)
+  robotState.irSensors[0] = isPointOnLineTrack(lx, ly) ? 0 : 1;
+  robotState.irSensors[1] = isPointOnLineTrack(cx, cy) ? 0 : 1;
+  robotState.irSensors[2] = isPointOnLineTrack(rx, ry) ? 0 : 1;
 }
 
 function isPointOnLineTrack(x, y) {
-  const pts = arenaObjects.lineTrack;
-  const trackRadius = 15;
-
+  const pts = arenaObjects.lineTrack, trackRadius = 15;
   for (let i = 0; i < pts.length; i++) {
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % pts.length];
-    
-    const A = x - p1.x;
-    const B = y - p1.y;
-    const C = p2.x - p1.x;
-    const D = p2.y - p1.y;
-
-    const dot = A * C + B * D;
-    const len_sq = C * C + D * D;
-    let param = -1;
-    if (len_sq !== 0) param = dot / len_sq;
-
+    const p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+    const A = x - p1.x, B = y - p1.y, C = p2.x - p1.x, D = p2.y - p1.y;
+    const dot = A * C + B * D, len_sq = C * C + D * D;
+    let param = len_sq !== 0 ? dot / len_sq : -1;
     let xx, yy;
     if (param < 0) { xx = p1.x; yy = p1.y; }
     else if (param > 1) { xx = p2.x; yy = p2.y; }
     else { xx = p1.x + param * C; yy = p1.y + param * D; }
-
-    const dx = x - xx;
-    const dy = y - yy;
-    if (Math.sqrt(dx * dx + dy * dy) <= trackRadius) return true;
+    if (Math.hypot(x - xx, y - yy) <= trackRadius) return true;
   }
   return false;
 }

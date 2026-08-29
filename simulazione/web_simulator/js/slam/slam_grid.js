@@ -1,0 +1,143 @@
+// simulazione/web_simulator/js/slam/slam_grid.js
+// Gestione della Griglia di Occupazione 2D e Raycasting
+
+var slamMap = {
+  width: 70,
+  height: 52,
+  grid: null,
+  frontiers: [],
+  currentPath: [],
+  pathIndex: 0,
+  fsmState: 'HEAD_SCAN',
+  scanStep: 0,
+  scanTimer: 0,
+  stepCounter: 0,
+  stuckCounter: 0,
+  targetFrontier: null,
+  stats: { exploredPct: 0, freeCells: 0, wallCells: 0 }
+};
+
+var SCAN_FAN_DEG = [-120, -90, -60, -40, -20, 0, 20, 40, 60, 90, 120];
+
+function getArenaW() {
+  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.width) ? arenaCanvas.width : 700;
+}
+function getArenaH() {
+  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.height) ? arenaCanvas.height : 520;
+}
+
+function initSlamGrid() {
+  slamMap.grid = [];
+  for (var y = 0; y < slamMap.height; y++) {
+    slamMap.grid.push(new Array(slamMap.width).fill(-1));
+  }
+  for (var x = 0; x < slamMap.width; x++) {
+    slamMap.grid[0][x] = 1;
+    slamMap.grid[slamMap.height - 1][x] = 1;
+  }
+  for (var yb = 0; yb < slamMap.height; yb++) {
+    slamMap.grid[yb][0] = 1;
+    slamMap.grid[yb][slamMap.width - 1] = 1;
+  }
+  slamMap.frontiers = [];
+  slamMap.currentPath = [];
+  slamMap.pathIndex = 0;
+  slamMap.fsmState = 'HEAD_SCAN';
+  slamMap.scanStep = 0;
+  slamMap.scanTimer = 0;
+  slamMap.stepCounter = 0;
+  slamMap.stuckCounter = 0;
+  slamMap.targetFrontier = null;
+  slamMap.stats = { exploredPct: 0, freeCells: 0, wallCells: 0 };
+  if (typeof modalDismissed !== 'undefined') modalDismissed = false;
+  if (typeof modalShown !== 'undefined') modalShown = false;
+}
+initSlamGrid();
+
+function slamWorldToGrid(x, y) {
+  var W = getArenaW(), H = getArenaH();
+  return {
+    gx: Math.max(0, Math.min(slamMap.width - 1, Math.floor((x / W) * slamMap.width))),
+    gy: Math.max(0, Math.min(slamMap.height - 1, Math.floor((y / H) * slamMap.height)))
+  };
+}
+
+function slamGridToWorld(gx, gy) {
+  var W = getArenaW(), H = getArenaH();
+  return {
+    x: (gx + 0.5) / slamMap.width * W,
+    y: (gy + 0.5) / slamMap.height * H
+  };
+}
+
+function updateSlamRayFromHit(startX, startY, hitX, hitY, didHit) {
+  var W = getArenaW(), H = getArenaH();
+  hitX = Math.max(0, Math.min(W - 1, hitX));
+  hitY = Math.max(0, Math.min(H - 1, hitY));
+  var p0 = slamWorldToGrid(startX, startY);
+  var p1 = slamWorldToGrid(hitX, hitY);
+  var x0 = p0.gx, y0 = p0.gy, x1 = p1.gx, y1 = p1.gy;
+  var dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  var sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  var err = dx - dy;
+  var points = [];
+  var safety = 0;
+
+  while (safety++ < 300) {
+    points.push({ x: x0, y: y0 });
+    if (x0 === x1 && y0 === y1) break;
+    var e2 = 2 * err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx) { err += dx; y0 += sy; }
+  }
+
+  for (var i = 0; i < points.length - 1; i++) {
+    var px = points[i].x, py = points[i].y;
+    if (py >= 0 && py < slamMap.height && px >= 0 && px < slamMap.width) {
+      if (slamMap.grid[py][px] !== 1) slamMap.grid[py][px] = 0;
+    }
+  }
+
+  if (didHit && points.length > 0) {
+    var ep = points[points.length - 1];
+    if (ep.y >= 0 && ep.y < slamMap.height && ep.x >= 0 && ep.x < slamMap.width) {
+      slamMap.grid[ep.y][ep.x] = 1;
+    }
+  }
+}
+
+function scanHeadFan(panDeg) {
+  if (typeof castSingleRay !== 'function') return;
+  var offsets = [-15, 0, 15];
+  for (var i = 0; i < offsets.length; i++) {
+    var angle = robotState.angle + ((panDeg + offsets[i]) * Math.PI / 180);
+    var ray = castSingleRay(robotState.x, robotState.y, angle);
+    updateSlamRayFromHit(robotState.x, robotState.y, ray.hitX, ray.hitY, ray.hit);
+  }
+  updateSlamStats();
+}
+
+function scanAllRays() {
+  if (typeof castSingleRay !== 'function') return;
+  for (var i = 0; i < SCAN_FAN_DEG.length; i++) {
+    var angle = robotState.angle + (SCAN_FAN_DEG[i] * Math.PI / 180);
+    var ray = castSingleRay(robotState.x, robotState.y, angle);
+    updateSlamRayFromHit(robotState.x, robotState.y, ray.hitX, ray.hitY, ray.hit);
+  }
+  updateSlamStats();
+}
+
+function updateSlamStats() {
+  var explored = 0, free = 0, walls = 0;
+  var total = slamMap.width * slamMap.height;
+  for (var y = 0; y < slamMap.height; y++) {
+    for (var x = 0; x < slamMap.width; x++) {
+      var v = slamMap.grid[y][x];
+      if (v === 0) { explored++; free++; }
+      else if (v === 1) { explored++; walls++; }
+    }
+  }
+  slamMap.stats.exploredPct = Math.round((explored / total) * 100);
+  slamMap.stats.freeCells = free;
+  slamMap.stats.wallCells = walls;
+}

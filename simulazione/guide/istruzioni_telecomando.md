@@ -51,6 +51,7 @@ Puoi avviare le modalità automatiche cliccando sui rispettivi pulsanti. Cliccan
 * **`TrackLine`**: Insegue autonomamente una linea nera sul pavimento.
 * **`TrackLight`**: Insegue le fonti di luce usando le fotoresistenze a bordo del robot.
 * **`KeepDistance`**: Il robot mantiene una distanza di sicurezza costante da un oggetto davanti a sé.
+* **`Exploration`**: Mappatura SLAM autonoma della stanza; esplora lo spazio sconosciuto scansionando l'arena e calcolando percorsi $A^*$ verso le frontiere.
 
 ---
 

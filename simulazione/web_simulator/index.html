@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/simulator/css/layout.css">
   <link rel="stylesheet" href="/simulator/css/components.css">
   <link rel="stylesheet" href="/simulator/css/telemetry.css">
+  <link rel="stylesheet" href="/simulator/css/modal.css">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -174,29 +175,45 @@
 
   </main>
 
+  <!-- Modal di Notifica Completamento Mappatura -->
+  <div id="completionModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-icon">🎉</div>
+      <h2 class="modal-title">Mappatura Completata!</h2>
+      <div class="modal-badge">Copertura Raggiunta: <span id="modalExploredPct">95%</span></div>
+      <p class="modal-desc">
+        La stanza è stata completamente esplorata con successo (superata la soglia del <strong>95%</strong>). Il robot ha arrestato la navigazione autonoma ed ha salvato la mappa 2D.
+      </p>
+      <button class="modal-btn" onclick="closeCompletionModal()">Perfetto, Chiudi</button>
+    </div>
+  </div>
+
   <!-- Three.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- JavaScript Modulari -->
-  <script src="/simulator/js/state.js?v=43"></script>
-  <script src="/simulator/js/kinematics.js?v=43"></script>
-  <script src="/simulator/js/sensors.js?v=43"></script>
-  <script src="/simulator/js/raycasting_sensor.js?v=43"></script>
-  <script src="/simulator/js/three_scene.js?v=43"></script>
-  <script src="/simulator/js/exploration_bridge.js?v=43"></script>
-  <script src="/simulator/js/obstacle_guard.js?v=43"></script>
-  <script src="/simulator/js/behaviors/automatic.js?v=43"></script>
-  <script src="/simulator/js/behaviors/find_color.js?v=43"></script>
-  <script src="/simulator/js/behaviors/track_line.js?v=43"></script>
-  <script src="/simulator/js/behaviors/track_light.js?v=43"></script>
-  <script src="/simulator/js/behaviors/keep_distance.js?v=43"></script>
-  <script src="/simulator/js/behaviors/exploration.js?v=43"></script>
-  <script src="/simulator/js/physics.js?v=43"></script>
-  <script src="/simulator/js/render_arena.js?v=43"></script>
-  <script src="/simulator/js/render_map.js?v=43"></script>
-  <script src="/simulator/js/render_fpv.js?v=43"></script>
-  <script src="/simulator/js/websocket.js?v=43"></script>
-  <script src="/simulator/js/controls.js?v=43"></script>
-  <script src="/simulator/js/main.js?v=43"></script>
+  <script src="/simulator/js/state.js?v=44"></script>
+  <script src="/simulator/js/kinematics.js?v=44"></script>
+  <script src="/simulator/js/sensors.js?v=44"></script>
+  <script src="/simulator/js/raycasting_sensor.js?v=44"></script>
+  <script src="/simulator/js/three_scene.js?v=44"></script>
+  <script src="/simulator/js/exploration_bridge.js?v=44"></script>
+  <script src="/simulator/js/obstacle_guard.js?v=44"></script>
+  <script src="/simulator/js/slam/slam_grid.js?v=44"></script>
+  <script src="/simulator/js/slam/slam_planner.js?v=44"></script>
+  <script src="/simulator/js/slam/slam_navigator.js?v=44"></script>
+  <script src="/simulator/js/behaviors/automatic.js?v=44"></script>
+  <script src="/simulator/js/behaviors/find_color.js?v=44"></script>
+  <script src="/simulator/js/behaviors/track_line.js?v=44"></script>
+  <script src="/simulator/js/behaviors/track_light.js?v=44"></script>
+  <script src="/simulator/js/behaviors/keep_distance.js?v=44"></script>
+  <script src="/simulator/js/behaviors/exploration.js?v=44"></script>
+  <script src="/simulator/js/physics.js?v=44"></script>
+  <script src="/simulator/js/render_arena.js?v=44"></script>
+  <script src="/simulator/js/render_map.js?v=44"></script>
+  <script src="/simulator/js/render_fpv.js?v=44"></script>
+  <script src="/simulator/js/websocket.js?v=44"></script>
+  <script src="/simulator/js/controls.js?v=44"></script>
+  <script src="/simulator/js/main.js?v=44"></script>
 </body>
 </html>

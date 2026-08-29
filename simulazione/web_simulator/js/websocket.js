@@ -80,7 +80,7 @@ function applyLocalCommand(cmd) {
     if (typeof initSlamGrid === 'function') {
       initSlamGrid();
     } else if (typeof slamMap !== 'undefined') {
-      slamMap.fsmState = 'SCAN_360';
+      slamMap.fsmState = 'HEAD_SCAN';
       slamMap.scanStep = 0;
       slamMap.scanTimer = 0;
       slamMap.frontiers = [];

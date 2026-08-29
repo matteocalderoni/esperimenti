@@ -48,12 +48,17 @@ Permette di eseguire l'intera codebase su qualsiasi PC/Mac senza librerie Raspbe
 * `luma.oled`: Emulazione schermo OLED SSD1306 con output pulito a variazione contenuto.
 * `picamera2` & `libcamera`: Emulazione flusso fotocamera OpenCV (frame sintetico o webcam di sistema).
 
-### 3. Simulatore Web 2D Interattivo (`simulazione/web_simulator/`)
+### 3. Simulatore Web 2D Interattivo & Visuale 3D (`simulazione/web_simulator/`)
 Un'interfaccia grafica modulare responsive per il browser raggiungibile su **`http://localhost:5000/simulator`**:
-* **Arena Top-Down 2D**: Campo di prova con tracciato a linea nera, ostacoli con collisioni rigide, pallina verde OpenCV e cono ultrasuoni a 3 raggi ($\pm 22^\circ$).
-* **Telecamera FPV 3D**: Visuale prospettiva basata sull'inquadratura reale della testa Pan-Tilt.
-* **Architettura Modulare JS**: Divisa nei sottomoduli `kinematics.js`, `sensors.js` e nella cartella `behaviors/` (`automatic.js`, `find_color.js`, `track_line.js`, `track_light.js`, `keep_distance.js`).
+* **Arena Top-Down 2D**: Campo di prova con tracciato a linea nera, ostacoli con collisioni rigide, pallina verde OpenCV e sensori di prossimità avanzati.
+* **Mappatura SLAM in Tempo Reale**: Canvas dedicato alla piantina ricostruita (`render_map.js`) con Occupancy Grid a celle libere/muri e percorsi di frontiera calcolati con $A^*$.
+* **Telecamera FPV 3D WebGL (Three.js)**: Visuale tridimensionale immersiva renderizzata in tempo reale in base all'orientamento del robot e alla testa Pan-Tilt (`three_scene.js`).
+* **Architettura Modulare JS**: Divisa nei moduli `kinematics.js`, `sensors.js`, `raycasting_sensor.js`, `obstacle_guard.js` e nei comportamenti autonomi in `behaviors/` (`automatic.js`, `exploration.js`, `find_color.js`, `track_line.js`, `track_light.js`, `keep_distance.js`).
 * **Selettore Engine Automazioni (JS Experimental vs Python Server)**: Switch nella barra di navigazione che permette di alternare in tempo reale tra i nuovi algoritmi JS locali ed il backend Python nativo del server (`Functions.py`).
+
+### 4. Modulo di Esplorazione Autonoma e Visione VLM (`robot_server/core/` & `vision/`)
+* **Occupancy Grid & Frontier Planner**: Generazione autonoma della mappa 2D e calcolo di traiettorie A* per raggiungere le aree inesplorate (`occupancy_grid.py`, `frontier_planner.py`).
+* **Vision-Language Model (VLM Ollama)**: Ispezione visiva dei frame FPV tramite modelli locali LLaVA per il riconoscimento di porte, quadri e landmark semantici (`vlm_inspector.py`).
 
 ---
 

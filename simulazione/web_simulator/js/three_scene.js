@@ -1,6 +1,5 @@
 // simulazione/web_simulator/js/three_scene.js
 // Gestione Scena 3D Three.js per Telecamera FPV e Visuale Immersiva
-
 let threeScene, threeCamera, threeRenderer;
 let threeWallMeshes = [];
 let threeTargetBall, threeLightMesh;
@@ -74,15 +73,13 @@ function buildThreeArenaWalls() {
   }
 
   // 4 Muri perimetrali (Nord, Sud, Ovest, Est)
-  const borders = [
-    { x: 0, z: -5.8, w: 15.6, d: 0.3 }, { x: 0, z: 5.8, w: 15.6, d: 0.3 },
-    { x: -7.8, z: 0, w: 0.3, d: 11.8 }, { x: 7.8, z: 0, w: 0.3, d: 11.8 }
-  ];
-  for (const b of borders) {
+  [{ x: 0, z: -5.8, w: 15.6, d: 0.3 }, { x: 0, z: 5.8, w: 15.6, d: 0.3 },
+   { x: -7.8, z: 0, w: 0.3, d: 11.8 }, { x: 7.8, z: 0, w: 0.3, d: 11.8 }
+  ].forEach(b => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, 1.6, b.d), borderMat);
     mesh.position.set(b.x, 0.8, b.z);
     threeScene.add(mesh);
-  }
+  });
 }
 
 function buildThreeLandmarks() {
@@ -104,14 +101,12 @@ function buildThreeLandmarks() {
   pointLight.position.set(pLight.x, 0.8, pLight.z);
   threeScene.add(pointLight);
 
-  // Landmark Semantico Aggiuntivo: "Porta Rossa" e "Quadro Blu" per VLM Ollama
-  const doorMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 });
-  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.3, 0.1), doorMat);
+  // Landmark Semantici Aggiuntivi: "Porta Rossa" e "Quadro Blu"
+  const door = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.3, 0.1), new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.5 }));
   door.position.set(-3.5, 0.65, -5.65);
   threeScene.add(door);
 
-  const signMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3 });
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.1), signMat);
+  const sign = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.8, 0.1), new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3 }));
   sign.position.set(3.5, 0.9, -5.65);
   threeScene.add(sign);
 }

@@ -67,16 +67,9 @@ function drawOccupancyMap() {
     });
     var maxShow = Math.min(15, sorted.length);
     for (var fi = 0; fi < maxShow; fi++) {
-      var f  = sorted[fi];
-      var fx = (f.gx + 0.5) * cellW;
-      var fy = (f.gy + 0.5) * cellH;
-      mapCtx.fillStyle   = fi === 0 ? '#ff006e' : '#ffbe0b'; // Prima frontiera in rosso (target)
-      mapCtx.shadowColor = mapCtx.fillStyle;
-      mapCtx.shadowBlur  = 8;
-      mapCtx.beginPath();
-      mapCtx.arc(fx, fy, fi === 0 ? 5 : 3, 0, Math.PI * 2);
-      mapCtx.fill();
-      mapCtx.shadowBlur = 0;
+      var f = sorted[fi], fx = (f.gx + 0.5) * cellW, fy = (f.gy + 0.5) * cellH;
+      mapCtx.fillStyle = fi === 0 ? '#ff006e' : '#ffbe0b';
+      mapCtx.beginPath(); mapCtx.arc(fx, fy, fi === 0 ? 5 : 3, 0, Math.PI * 2); mapCtx.fill();
     }
   }
 
@@ -117,15 +110,15 @@ function drawOccupancyMap() {
   mapCtx.restore();
 
   // 5. HUD
-  mapCtx.fillStyle   = 'rgba(6,9,19,0.8)';
+  mapCtx.fillStyle   = 'rgba(6,9,19,0.85)';
   mapCtx.strokeStyle = 'rgba(0,240,255,0.3)';
   mapCtx.lineWidth   = 1;
   mapCtx.fillRect(8, 8, 240, 80);
   mapCtx.strokeRect(8, 8, 240, 80);
 
-  mapCtx.fillStyle = '#00f5d4';
+  mapCtx.fillStyle = slamMap.stats.exploredPct >= 95 ? '#00ff55' : '#00f5d4';
   mapCtx.font      = 'bold 11px monospace';
-  mapCtx.fillText('COPERTURA: ' + slamMap.stats.exploredPct + '%', 16, 26);
+  mapCtx.fillText('COPERTURA: ' + slamMap.stats.exploredPct + '% (TARGET >= 95%)', 16, 26);
 
   mapCtx.fillStyle = '#94a3b8';
   mapCtx.font      = '10px monospace';
@@ -135,3 +128,20 @@ function drawOccupancyMap() {
   mapCtx.fillText('ARENA: ' + areaW + 'm x ' + areaH + 'm', 16, 58);
   mapCtx.fillText('FSM: ' + slamMap.fsmState, 16, 74);
 }
+
+let modalShown = false, modalDismissed = false;
+function showCompletionModal(pct) {
+  if (modalShown || modalDismissed) return;
+  modalShown = true;
+  const overlay = document.getElementById('completionModal');
+  const pctEl = document.getElementById('modalExploredPct');
+  if (pctEl) pctEl.innerText = `${pct}%`;
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeCompletionModal() {
+  const overlay = document.getElementById('completionModal');
+  if (overlay) overlay.classList.remove('active');
+  modalDismissed = true;
+}
+

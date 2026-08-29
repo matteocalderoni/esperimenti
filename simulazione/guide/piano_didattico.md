@@ -15,6 +15,7 @@ graph TD
     P3 --> P4[Passo 4: ADC Analogico<br>smbus & ADS7830]
     P4 --> P5[Passo 5: Display<br>luma.oled SSD1306]
     P5 --> P6[Passo 6: Fotocamera<br>picamera2 & OpenCV Webcam]
+    P6 --> P7[Passo 7: Esplorazione & SLAM<br>A* Pathfinding & VLM Ollama]
 ```
 
 ---
@@ -68,3 +69,13 @@ graph TD
   * [x] Configurare l'acquisizione video fittizia devitalizzando l'errore o deviandola sulla webcam di sistema.
   * [x] Avviare per la prima volta `WebServer.py` su Mac, collegarsi con la WebUI o la GUI desktop.
   * [x] Convalidare la ricezione dei comandi.
+
+### [x] Passo 7: Esplorazione Autonoma, Mappatura SLAM & VLM (`core/` e `vision/`)
+* **Obiettivo**: Mappare l'ambiente 2D sconosciuto, navigare verso le frontiere e identificare landmark visivi.
+* **Componenti**:
+  * [x] Griglia di occupazione 2D e raycasting Bresenham (`robot_server/core/occupancy_grid.py`).
+  * [x] Rilevamento frontiere (BFS) e pianificatore traiettorie A* (`robot_server/core/frontier_planner.py`).
+  * [x] Macchina a stati di esplorazione continua (`robot_server/behaviors/room_explorer.py` e `exploration.js`).
+  * [x] Integrazione semantica Vision-Language Model con Ollama (`robot_server/vision/vlm_inspector.py`).
+  * [x] Visualizzatore FPV 3D WebGL Three.js (`three_scene.js`) e renderer mappa (`render_map.js`).
+  * [x] Test unitari convalidati in `simulazione/test_exploration.py`.

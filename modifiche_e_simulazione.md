@@ -31,6 +31,18 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
    * Introduzione di banner di separazione visuali (`════`) con icone per ogni comando WebSocket ricevuto in `WebServer.py`.
    * Formattazione dei log hardware ad albero rientrato (`   └─ 🚗`) ed eliminazione dei log duplicati (`get_info`, `frequency`).
 
+5. **Sviluppo del Modulo di Esplorazione Autonoma 2D & SLAM (`core/` & `behaviors/exploration.js`)**:
+   * **Occupancy Grid 2D**: Matrice $70 \times 52$ con raycasting Bresenham e dilatazione morfologica di sicurezza.
+   * **Pianificatore Frontiere**: Clustering BFS per identificare zone inesplorate e calcolo traiettorie ottime con algoritmo **$A^*$**.
+   * **Architettura Simmetrica**: Supporto completo sia in Python (`robot_server/behaviors/room_explorer.py`) sia in JavaScript con canvas live (`render_map.js`).
+
+6. **Guardia Ostacoli Unificata & Manovre di Fuga (`obstacle_guard.js`)**:
+   * Algoritmo a doppia soglia (rosso $< 25\text{ cm}$, giallo $< 80\text{ cm}$) e rilevamento stallo (`stuckFrames >= 60`) per disimpegnare automaticamente il robot da angoli ciechi.
+
+7. **Visuale Immersiva 3D WebGL Three.js & Integrazione Visione VLM Ollama (`three_scene.js` & `vlm_inspector.py`)**:
+   * Rendering 3D a 60 FPS con telecamera ancorata alla testa Pan-Tilt.
+   * Riconoscimento semantico di landmark visivi (`porta_rossa`, `quadro_blu`, `pallina_verde`, `faro_giallo`) interrogando in background il modello locale VLM (LLaVA) tramite API Ollama.
+
 ---
 
 ## 🛠️ Registro Dettagliato delle Modifiche ai File Originali
@@ -62,6 +74,8 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 | **Connessione WebApp** | ❌ Crash WebSocket ogni 5s per eccezione lettura temperatura | ✅ Connessione WebSocket 100% stabile e senza disconnessioni |
 | **Console/Terminale** | ❌ Intasata da scritte `loop` ad ogni iterazione dello schermo | ✅ Banner visivi con icone (`════`) e log ad albero (`   └─ 🚗`) |
 | **Spegnimento Funzioni** | ❌ `stopCV` non fermava i thread background dei motori | ✅ Arresto istantaneo dei motori e dei thread con `fuc.pause()` |
-| **Simulazione Grafica** | ❌ Assente (solo terminale di testo) | ✅ Arena 2D interattiva, telecamera FPV 3D e tracciato a linea nera |
-| **Struttura Simulatore** | ❌ File monolitici lunghi e confusi | ✅ Architettura modulare: `kinematics.js`, `sensors.js` e cartella `behaviors/` |
+| **Simulazione Grafica** | ❌ Assente (solo terminale di testo) | ✅ Arena 2D interattiva, telecamera FPV 3D Three.js e mappa SLAM |
+| **Mappatura & Esplorazione** | ❌ Assente | ✅ SLAM Occupancy Grid, Frontier Clustering, Pathfinding $A^*$ |
+| **Visione Intelligente VLM**| ❌ Assente | ✅ Integrazione semantica locale Ollama per riconoscimento landmark |
+| **Struttura Software** | ❌ File monolitici lunghi e confusi | ✅ Architettura modulare conforme alla Costituzione (SRP e max 150 righe) |
 | **Selettore Engine IA** | ❌ Assente | ✅ Switch nell'interfaccia tra 🧪 `JS Experimental` e 🐍 `Python Server` |
