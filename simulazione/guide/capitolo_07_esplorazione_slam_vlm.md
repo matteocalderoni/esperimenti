@@ -1,63 +1,51 @@
 # Guida all'Esplorazione Autonoma, Mappatura SLAM e Visione VLM
 
-Questa guida documenta la nuova logica avanzata di **Esplorazione Autonoma dell'Ambiente e Mappatura Spaziale (SLAM)** implementata in parallelo nel motore JavaScript del simulatore e nel server Python del robot (`robot_server`), con supporto alla visione semantica locale tramite **VLM (Vision-Language Model con Ollama)**.
+Questa guida documenta la logica avanzata di **Esplorazione Autonoma dell'Ambiente e Mappatura Spaziale (SLAM)** implementata in parallelo nel motore JavaScript del simulatore e nel server Python del robot (`robot_server`), con supporto alla visione semantica locale tramite **VLM (Vision-Language Model con Ollama)** e generazione della **Tavola Architettonica CAD del Geometra (Campitura 45°, Riconoscimento Tramezzi e Quote CAD)**.
 
 ---
 
 ## 🧭 1. Architettura della Macchina a Stati (FSM)
 
-L'algoritmo di esplorazione autonoma adotta una **Finite State Machine (FSM)** ciclica che alterna scansioni ad alta risoluzione a veicolo fermo (muovendo solo la testa Pan-Tilt senza rischio di urti o vibrazioni) e spostamenti protetti da anticollisione:
+L'algoritmo di esplorazione autonoma adotta una **Finite State Machine (FSM)** potenziata con scansione panoramica a 360° iniziale in due fasi, navigazione fluida $A^*$ con buffer 30px, e target al **99% di copertura** con **Hunter Mode**:
 
 ```mermaid
 graph TD
-    S1[1. HEAD_SCAN (Da fermo)<br>Sweep testa Pan-Tilt -80°..+80°<br>Anticollisione DISATTIVATA] --> S2[2. FIND_FRONTIERS<br>Ricerca baricentri inesplorati & Path A*]
-    S2 --> S3[3. NAVIGATE (In movimento)<br>Inseguimento waypoint<br>Anticollisione ATTIVA con obstacle_guard]
-    S3 -->|Dopo ogni tratto / arrivo waypoint| S1
-    S2 -->|Copertura >= 95% o finite frontiere| S4[🎉 ESPLORAZIONE COMPLETATA + MODAL]
+    S0["1. INITIAL_SCAN / HEAD_SCAN_1<br>Sweep testa Pan-Tilt -80°..+80°<br>Anticollisione Disattivata"] -->|Spazio libero > 22cm| S1["2. ROTATE_180<br>Rotazione telaio 180° sul posto"]
+    S0 -->|Ostacoli adiacenti| S3["4. FIND_FRONTIERS (Information Gain)<br>Scoring quadranti & angoli ciechi"]
+    S1 --> S2["3. HEAD_SCAN_2<br>Seconda scansione panoramica"]
+    S2 --> S3
+    S3 -->|Frontiere attive| S4["5. NAVIGATE<br>Inseguimento Waypoint A*<br>Buffer 30px + Guardia Proattiva"]
+    S3 -->|Frontiere esaurite & < 99%| S6["6. HUNTER MODE<br>Puntamento celle -1 residue"]
+    S6 --> S4
+    S4 -->|Dopo tratto di marcia o stallo| S0
+    S3 -->|Copertura >= 99%| S5["🎉 COMPLETE<br>Arresto + Pop-up Modale 99%"]
 ```
 
 ### Stati Operativi & Architettura Modulare (`simulazione/web_simulator/js/slam/`):
-1. **`slam_grid.js`**: Gestisce la matrice 2D `OccupancyGrid` ($70 \times 52$, risoluzione $10\text{ px/cella}$), le coordinate world $\leftrightarrow$ grid e la scansione a ventaglio `scanHeadFan(panDeg)` dalla testa.
-2. **`slam_planner.js`**: Calcola la dilatazione morfologica di sicurezza a $2$ celle attorno a tutti gli ostacoli per proteggere la sagoma del telaio, identifica i baricentri delle frontiere (BFS) ed esegue il pathfinding con $A^*$.
-3. **`slam_navigator.js`**: Insegue i waypoint calcolati con controllo di sterzo progressivo. Al completamento del segmento di marcia, arresta la macchina (`speed = 0`, `steering = 0`) e riavvia `HEAD_SCAN`.
-4. **`exploration.js`**: Coordina la FSM, esegue lo sweep della testa a veicolo fermo (senza rotazione del telaio), verifica il target al **95%** e attiva il pop-up modale ([modal.css](file:///Users/mauroi/Documents/esperimenti/simulazione/web_simulator/css/modal.css)).
+1. **`slam_grid.js`**: Inizializza la matrice 2D `OccupancyGrid` ($70 \times 52$) al **100% come inesplorata (`-1`)**, senza muri o dimensioni perimetrali preimpostate.
+2. **`slam_planner.js`**: Calcola la dilatazione morfologica di sicurezza a **$3$ celle ($30\text{ px}$)**, gestisce le frontiere e l'Hunter Mode per il $99\%$.
+3. **`slam_navigator.js`**: Insegue i waypoint $A^*$ con controllo proattivo di velocità e disimpegno rapido in caso di stallo ($> 45$ frame).
+4. **`cad_dimensions.js`**: Analizza la topologia della mappa scoprendo **muri interni, tramezzi e speroni che partono dal perimetro**, calcolandone le misure reali ($L \times H$).
+5. **`cad_renderer.js`**: Motore grafico per la resa della **Tavola Tecnica CAD da Geometra** (campitura a 45° sui muri sezionati, squadratura foglio, catene di quota e cartiglio catastale).
 
 ---
 
-## 🛡️ 2. Guardia Ostacoli a Curvatura Continua (`obstacle_guard.js`)
+## 📐 2. Tavola Architettonica CAD & Misurazione Tramezzi
 
-Per eliminare sia lo sfarfallio sia il rimbalzo continuo avanti/indietro:
-- **Scelta Lato Libero con Memoria (`leftDist` vs `rightDist`)**: Il robot calcola continuamente il varco con più spazio libero e mantiene la rotta con isteresi per evitare cambi continui di polarità.
-- **Curvatura Dinamica in Avanzamento ($d < 65\text{cm}$)**: Davanti agli ostacoli il veicolo mantiene sempre trazione e velocità attiva ($\text{speed} \ge 1.0$) sterzando con precisione, impostando una traiettoria ad arco fluido per aggirare l'ostacolo.
-- **Disimpegno di Sicurezza ($< 18\text{cm}$)**: La retromarcia interviene solo in caso di contatto imminente per un breve intervallo (22 frame / 0.35s), tornando istantaneamente alla marcia avanti senza entrare in loop ciclici.
-- **Filtro Passa-Basso**: Interpolazione a 60 FPS di velocità e sterzo per movimenti morbidi e realistici.
-- **Backup di Sicurezza**: I backup precedenti sono conservati in `magazzino/backups_evitamento/`.
-
----
-
-## 🕶️ 3. Visualizzatore 3D Three.js e Scena Immersiva (`three_scene.js`)
-
-Per consentire una visione FPV realistica e generare frame visivi sintetici ad alta fedeltà:
-- **WebGL Three.js Renderer**: Rendering 3D a 60 FPS proiettato sulla testa Pan-Tilt del robot (Yaw e Pitch sincronizzati).
-- **Landmarks 3D Presenti nell'Arena**:
-  - `pallina_verde`: Target sferico per OpenCV Color Tracking.
-  - `faro_giallo`: Sorgente di luce point-light per Light Tracking.
-  - `porta_rossa` & `quadro_blu`: Landmark semantici su parete nord per il riconoscimento VLM.
+- **Campitura Muraria a 45°**: Tratteggio diagonale di sezione (`//////`) all'interno di tutti i muri scoperti, come nei veri progetti AutoCAD e catastali.
+- **Riconoscimento Muri Sporgenti dal Perimetro**: Individuazione ed etichettatura metrica automatica per:
+  - **Tramezzi e Speroni Murari** (pareti divisorie collegate alle pareti perimetrali, quotate con `Tramezzo Lm × Hm`).
+  - **Muri Interni Indipendenti** (`Muro Lm × Hm`).
+- **Squadratura Tavola e Cartiglio Professionale**:
+  - Doppia linea perimetrale di squadratura tecnica.
+  - Cartiglio tabellare con *Oggetto*, *Numero Muri e Tramezzi*, *Ingombro Rilevato*, *Superficie Utile Calpestabile in $\text{m}^2$*, *Scala 1:50* e *Stato Rilievo*.
+- **Scala Metrica Grafica & Bussola Nord**.
 
 ---
 
-## 👁️ 4. Integrazione Visione VLM con Ollama (`vlm_inspector.py`)
+## 🧪 3. Test e Validazione
 
-Il modulo `vlm_inspector.py` permette di interfacciare il robot con un modello Vision-Language locale (es. `llava:7b` su `http://localhost:11434`):
-- **Ispezione Snapshot**: Il simulatore WebGL o la telecamera invia un frame JPEG base64 al server.
-- **Prompt Strutturato JSON**: Il modello restituisce la presenza e direzione dei landmark noti.
-- **Fallback Resiliente**: In assenza del server Ollama o in caso di timeout, il server opera in modalità offline senza bloccare i cicli di movimento.
-
----
-
-## 🧪 5. Test e Validazione
-
-I test automatici per griglia, $A^*$, dilatazione e VLM sono inclusi in `simulazione/test_exploration.py`:
+Test automatici per griglia, dilatazione a 3 celle, $A^*$, angoli ciechi, Hunter Mode (99%) e VLM:
 ```bash
 PYTHONPATH=mock_hardware:robot_server venv/bin/python simulazione/test_exploration.py
 ```

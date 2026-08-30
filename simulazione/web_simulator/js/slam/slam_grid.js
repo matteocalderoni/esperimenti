@@ -31,18 +31,10 @@ function initSlamGrid() {
   for (var y = 0; y < slamMap.height; y++) {
     slamMap.grid.push(new Array(slamMap.width).fill(-1));
   }
-  for (var x = 0; x < slamMap.width; x++) {
-    slamMap.grid[0][x] = 1;
-    slamMap.grid[slamMap.height - 1][x] = 1;
-  }
-  for (var yb = 0; yb < slamMap.height; yb++) {
-    slamMap.grid[yb][0] = 1;
-    slamMap.grid[yb][slamMap.width - 1] = 1;
-  }
   slamMap.frontiers = [];
   slamMap.currentPath = [];
   slamMap.pathIndex = 0;
-  slamMap.fsmState = 'HEAD_SCAN';
+  slamMap.fsmState = 'INITIAL_SCAN';
   slamMap.scanStep = 0;
   slamMap.scanTimer = 0;
   slamMap.stepCounter = 0;

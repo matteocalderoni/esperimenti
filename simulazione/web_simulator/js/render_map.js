@@ -116,9 +116,9 @@ function drawOccupancyMap() {
   mapCtx.fillRect(8, 8, 240, 80);
   mapCtx.strokeRect(8, 8, 240, 80);
 
-  mapCtx.fillStyle = slamMap.stats.exploredPct >= 95 ? '#00ff55' : '#00f5d4';
+  mapCtx.fillStyle = slamMap.stats.exploredPct >= 99 ? '#00ff55' : '#00f5d4';
   mapCtx.font      = 'bold 11px monospace';
-  mapCtx.fillText('COPERTURA: ' + slamMap.stats.exploredPct + '% (TARGET >= 95%)', 16, 26);
+  mapCtx.fillText('COPERTURA: ' + slamMap.stats.exploredPct + '% (TARGET >= 99%)', 16, 26);
 
   mapCtx.fillStyle = '#94a3b8';
   mapCtx.font      = '10px monospace';
@@ -127,20 +127,20 @@ function drawOccupancyMap() {
   var areaW = (W / 160).toFixed(1), areaH = (H / 160).toFixed(1);
   mapCtx.fillText('ARENA: ' + areaW + 'm x ' + areaH + 'm', 16, 58);
   mapCtx.fillText('FSM: ' + slamMap.fsmState, 16, 74);
+  if (typeof drawSurveyorDimensions === 'function') drawSurveyorDimensions(mapCtx, w, h);
 }
 
 let modalShown = false, modalDismissed = false;
 function showCompletionModal(pct) {
   if (modalShown || modalDismissed) return;
   modalShown = true;
-  const overlay = document.getElementById('completionModal');
-  const pctEl = document.getElementById('modalExploredPct');
+  var overlay = document.getElementById('completionModal'), pctEl = document.getElementById('modalExploredPct');
   if (pctEl) pctEl.innerText = `${pct}%`;
   if (overlay) overlay.classList.add('active');
 }
 
 function closeCompletionModal() {
-  const overlay = document.getElementById('completionModal');
+  var overlay = document.getElementById('completionModal');
   if (overlay) overlay.classList.remove('active');
   modalDismissed = true;
 }

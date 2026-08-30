@@ -48,7 +48,7 @@ function executeJSBehaviors() {
     } else if (mode === 'trackLight') {
       guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
     } else if (mode === 'exploration') {
-      guardOptions = { dInfluence: 0.50, stopThreshold: 0.20 };
+      guardOptions = { dInfluence: 0.35, dangerThresh: 0.18, stopThreshold: 0.15 };
     }
 
     if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles(guardOptions)) {

@@ -69,7 +69,12 @@
             <div class="card-title">
               <span class="card-title-icon">📡</span> Piantina Rilevata (SLAM Live 2D)
             </div>
-            <span class="mode-badge" style="background:rgba(0,245,212,0.15); border-color:var(--accent-green); color:var(--accent-green)">OCCUPANCY GRID</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn-ctrl" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-cyan); color:var(--accent-cyan);" onclick="openBlueprintModal()">🔍 Ingrandisci</button>
+              <button id="btnCadToggle" class="btn-ctrl active" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-green); color:var(--accent-green);" onclick="toggleCadDimensions()">📐 Quote CAD</button>
+              <button class="btn-ctrl" style="padding:3px 8px; font-size:11px; margin:0;" onclick="exportCadPlan()">💾 Esporta</button>
+              <span class="mode-badge" style="background:rgba(0,245,212,0.15); border-color:var(--accent-green); color:var(--accent-green)">OCCUPANCY GRID</span>
+            </div>
           </div>
           <div class="canvas-container">
             <canvas id="mapCanvas"></canvas>
@@ -179,12 +184,35 @@
   <div id="completionModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-icon">🎉</div>
-      <h2 class="modal-title">Mappatura Completata!</h2>
-      <div class="modal-badge">Copertura Raggiunta: <span id="modalExploredPct">95%</span></div>
+      <h2 class="modal-title">Mappatura 99% Completata!</h2>
+      <div class="modal-badge">Copertura Raggiunta: <span id="modalExploredPct">99%</span></div>
       <p class="modal-desc">
-        La stanza è stata completamente esplorata con successo (superata la soglia del <strong>95%</strong>). Il robot ha arrestato la navigazione autonoma ed ha salvato la mappa 2D.
+        L'ambiente è stato completamente rilevato con successo (superata la soglia del <strong>99%</strong>). Il robot ha arrestato la navigazione autonoma ed ha generato la pianta tecnica quotata.
       </p>
+      <button class="modal-btn" style="background:rgba(0,240,255,0.2); border:1px solid var(--accent-cyan); color:var(--accent-cyan); margin-bottom:8px;" onclick="openBlueprintModal()">📐 Visualizza Piantina Geometra HD</button>
       <button class="modal-btn" onclick="closeCompletionModal()">Perfetto, Chiudi</button>
+    </div>
+  </div>
+
+  <!-- Modal Visualizzatore Piantina Geometra HD (In-Browser Viewer) -->
+  <div id="blueprintModal" class="modal-overlay">
+    <div class="blueprint-modal-card">
+      <div class="blueprint-header">
+        <div style="font-size:16px; font-weight:700; color:#00f0ff; display:flex; align-items:center; gap:8px;">
+          <span>📐</span> Rilievo Planimetrico Architettonico (Pianta del Geometra HD)
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="modal-btn" style="padding:6px 14px; font-size:12px;" onclick="exportCadPlan()">💾 Salva PNG</button>
+          <button class="modal-btn" style="padding:6px 14px; font-size:12px; background:#334155; color:#fff; box-shadow:none;" onclick="closeBlueprintModal()">✕ Chiudi</button>
+        </div>
+      </div>
+      <div class="blueprint-canvas-wrapper">
+        <canvas id="blueprintCanvas"></canvas>
+      </div>
+      <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
+        <div>Scala metrica 1:50 • Rilievo automatico SLAM 2D Occupancy Grid</div>
+        <div style="color:var(--accent-cyan); font-weight:bold;">Proporzioni Reali: 4.38m x 3.25m</div>
+      </div>
     </div>
   </div>
 
@@ -192,28 +220,30 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- JavaScript Modulari -->
-  <script src="/simulator/js/state.js?v=44"></script>
-  <script src="/simulator/js/kinematics.js?v=44"></script>
-  <script src="/simulator/js/sensors.js?v=44"></script>
-  <script src="/simulator/js/raycasting_sensor.js?v=44"></script>
-  <script src="/simulator/js/three_scene.js?v=44"></script>
-  <script src="/simulator/js/exploration_bridge.js?v=44"></script>
-  <script src="/simulator/js/obstacle_guard.js?v=44"></script>
-  <script src="/simulator/js/slam/slam_grid.js?v=44"></script>
-  <script src="/simulator/js/slam/slam_planner.js?v=44"></script>
-  <script src="/simulator/js/slam/slam_navigator.js?v=44"></script>
-  <script src="/simulator/js/behaviors/automatic.js?v=44"></script>
-  <script src="/simulator/js/behaviors/find_color.js?v=44"></script>
-  <script src="/simulator/js/behaviors/track_line.js?v=44"></script>
-  <script src="/simulator/js/behaviors/track_light.js?v=44"></script>
-  <script src="/simulator/js/behaviors/keep_distance.js?v=44"></script>
-  <script src="/simulator/js/behaviors/exploration.js?v=44"></script>
-  <script src="/simulator/js/physics.js?v=44"></script>
-  <script src="/simulator/js/render_arena.js?v=44"></script>
-  <script src="/simulator/js/render_map.js?v=44"></script>
-  <script src="/simulator/js/render_fpv.js?v=44"></script>
-  <script src="/simulator/js/websocket.js?v=44"></script>
-  <script src="/simulator/js/controls.js?v=44"></script>
-  <script src="/simulator/js/main.js?v=44"></script>
+  <script src="/simulator/js/state.js?v=45"></script>
+  <script src="/simulator/js/kinematics.js?v=45"></script>
+  <script src="/simulator/js/sensors.js?v=45"></script>
+  <script src="/simulator/js/raycasting_sensor.js?v=45"></script>
+  <script src="/simulator/js/three_scene.js?v=45"></script>
+  <script src="/simulator/js/exploration_bridge.js?v=45"></script>
+  <script src="/simulator/js/obstacle_guard.js?v=45"></script>
+  <script src="/simulator/js/slam/slam_grid.js?v=45"></script>
+  <script src="/simulator/js/slam/slam_planner.js?v=45"></script>
+  <script src="/simulator/js/slam/slam_navigator.js?v=45"></script>
+  <script src="/simulator/js/slam/cad_dimensions.js?v=46"></script>
+  <script src="/simulator/js/slam/cad_renderer.js?v=46"></script>
+  <script src="/simulator/js/behaviors/automatic.js?v=45"></script>
+  <script src="/simulator/js/behaviors/find_color.js?v=45"></script>
+  <script src="/simulator/js/behaviors/track_line.js?v=45"></script>
+  <script src="/simulator/js/behaviors/track_light.js?v=45"></script>
+  <script src="/simulator/js/behaviors/keep_distance.js?v=45"></script>
+  <script src="/simulator/js/behaviors/exploration.js?v=45"></script>
+  <script src="/simulator/js/physics.js?v=45"></script>
+  <script src="/simulator/js/render_arena.js?v=45"></script>
+  <script src="/simulator/js/render_map.js?v=45"></script>
+  <script src="/simulator/js/render_fpv.js?v=45"></script>
+  <script src="/simulator/js/websocket.js?v=45"></script>
+  <script src="/simulator/js/controls.js?v=45"></script>
+  <script src="/simulator/js/main.js?v=45"></script>
 </body>
 </html>
