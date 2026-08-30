@@ -1,69 +1,86 @@
 // simulazione/web_simulator/js/render_fpv.js
+// Telecamera FPV Fotorealistica con Texture Arredi e Visione VLM
+
+var furnImages = {};
+function getFurnImage(url) {
+  if (!url) return null;
+  if (!furnImages[url]) {
+    var img = new Image(); img.src = url; furnImages[url] = img;
+  }
+  return furnImages[url];
+}
 
 function drawFPV() {
   if (!fpvCtx || !fpvCanvas) return;
   fpvCtx.clearRect(0, 0, fpvCanvas.width, fpvCanvas.height);
 
-  // Sfondo 3D Stanza
-  const grad = fpvCtx.createLinearGradient(0, 0, 0, fpvCanvas.height);
-  grad.addColorStop(0, '#090d16');
-  grad.addColorStop(0.5, '#131b2e');
-  grad.addColorStop(1, '#050810');
-  fpvCtx.fillStyle = grad;
-  fpvCtx.fillRect(0, 0, fpvCanvas.width, fpvCanvas.height);
+  // Sfondo 3D Stanza & Pareti Cucina
+  var grad = fpvCtx.createLinearGradient(0, 0, 0, fpvCanvas.height);
+  grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#1e293b'); grad.addColorStop(1, '#0c1222');
+  fpvCtx.fillStyle = grad; fpvCtx.fillRect(0, 0, fpvCanvas.width, fpvCanvas.height);
 
-  // Griglia di prospettiva pavimento
-  fpvCtx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
-  fpvCtx.lineWidth = 1;
-  const horizon = fpvCanvas.height * 0.5;
-  for (let x = -200; x <= fpvCanvas.width + 200; x += 60) {
-    fpvCtx.beginPath();
-    fpvCtx.moveTo(fpvCanvas.width / 2, horizon);
-    fpvCtx.lineTo(x, fpvCanvas.height);
-    fpvCtx.stroke();
+  // Parquet / Piastrelle Pavimento Cucina in Prospettiva
+  fpvCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)'; fpvCtx.lineWidth = 1;
+  var horizon = fpvCanvas.height * 0.5;
+  for (var x = -300; x <= fpvCanvas.width + 300; x += 50) {
+    fpvCtx.beginPath(); fpvCtx.moveTo(fpvCanvas.width / 2, horizon); fpvCtx.lineTo(x, fpvCanvas.height); fpvCtx.stroke();
+  }
+  for (var y = horizon; y <= fpvCanvas.height; y += 18) {
+    fpvCtx.beginPath(); fpvCtx.moveTo(0, y); fpvCtx.lineTo(fpvCanvas.width, y); fpvCtx.stroke();
   }
 
-  // Disegna l'oggetto target pallina verde se inquadrato dalla telecamera
-  const ball = arenaObjects.targetBall;
-  const dx = ball.x - robotState.x;
-  const dy = ball.y - robotState.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const targetAngle = Math.atan2(dy, dx);
-  const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
-  let diffAngle = targetAngle - totalHeadAngle;
+  // 1. Rendering Fotografico dei Mobili Cucina & Bounding Box VLM
+  if (arenaObjects.walls) {
+    var totalHead = robotState.angle + (robotState.panAngle * Math.PI / 180);
+    // Ordina per distanza decrescente per corretta occlusione
+    var sortedWalls = arenaObjects.walls.slice().sort(function(a, b) {
+      return Math.hypot((b.x+b.w/2)-robotState.x, (b.y+b.h/2)-robotState.y) - Math.hypot((a.x+a.w/2)-robotState.x, (a.y+a.h/2)-robotState.y);
+    });
 
-  while (diffAngle < -Math.PI) diffAngle += Math.PI * 2;
-  while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
+    for (var wi = 0; wi < sortedWalls.length; wi++) {
+      var furn = sortedWalls[wi];
+      var cx = furn.x + furn.w / 2, cy = furn.y + furn.h / 2;
+      var fdx = cx - robotState.x, fdy = cy - robotState.y, fdist = Math.hypot(fdx, fdy);
+      var fDiff = Math.atan2(fdy, fdx) - totalHead;
+      while (fDiff < -Math.PI) fDiff += Math.PI * 2;
+      while (fDiff > Math.PI) fDiff -= Math.PI * 2;
 
-  if (Math.abs(diffAngle) < 0.75 && dist < 380) {
-    const screenX = (fpvCanvas.width / 2) + (diffAngle * 420);
-    const screenY = horizon + 30 + (2000 / dist);
-    const size = Math.max(10, 1600 / dist);
+      if (Math.abs(fDiff) < 0.85 && fdist < 360 && fdist > 25) {
+        var sx = (fpvCanvas.width / 2) + (fDiff * 450);
+        var sy = horizon + 20 + (1600 / fdist);
+        var sw = Math.max(45, (furn.w * 380) / fdist), sh = Math.max(40, (furn.h * 420) / fdist);
+        var img = getFurnImage(furn.asset);
 
-    fpvCtx.fillStyle = ball.color;
-    fpvCtx.shadowColor = ball.color;
-    fpvCtx.shadowBlur = 20;
-    fpvCtx.beginPath();
-    fpvCtx.arc(screenX, screenY, size, 0, Math.PI * 2);
-    fpvCtx.fill();
-    fpvCtx.shadowBlur = 0;
+        if (img && img.complete && img.naturalWidth > 0) {
+          fpvCtx.drawImage(img, sx - sw/2, sy - sh/2, sw, sh);
+        } else {
+          fpvCtx.fillStyle = '#1e293b'; fpvCtx.fillRect(sx - sw/2, sy - sh/2, sw, sh);
+        }
 
-    // Se è attiva la modalità OpenCV FindColor, mostra il mirino di puntamento e blocco target
-    if (robotState.activeMode === 'findColor') {
-      fpvCtx.strokeStyle = '#00f5d4';
-      fpvCtx.lineWidth = 2;
-      fpvCtx.strokeRect(screenX - size - 6, screenY - size - 6, size * 2 + 12, size * 2 + 12);
-      
-      fpvCtx.fillStyle = '#00f5d4';
-      fpvCtx.font = '12px monospace';
-      fpvCtx.fillText('TARGET DETECTED [COLOR LOCK]', screenX - size - 6, screenY - size - 12);
+        // Bounding Box AI VLM (Ollama LLaVA Vision)
+        fpvCtx.strokeStyle = '#ffbe0b'; fpvCtx.lineWidth = 1.5; fpvCtx.setLineDash([3, 3]);
+        fpvCtx.strokeRect(sx - sw/2 - 3, sy - sh/2 - 3, sw + 6, sh + 6); fpvCtx.setLineDash([]);
+        fpvCtx.fillStyle = '#060913'; fpvCtx.fillRect(sx - sw/2 - 3, sy - sh/2 - 16, sw + 6, 13);
+        fpvCtx.fillStyle = '#ffbe0b'; fpvCtx.font = 'bold 8px monospace';
+        fpvCtx.fillText((furn.icon || '🔍') + ' ' + furn.name, sx - sw/2, sy - sh/2 - 6);
+      }
     }
   }
 
-  // Overlay HUD Telecamera
-  fpvCtx.fillStyle = 'rgba(0, 240, 255, 0.8)';
-  fpvCtx.font = '12px monospace';
-  fpvCtx.fillText(`CAM FPV MODE: ${robotState.activeMode.toUpperCase()}`, 15, 25);
-  fpvCtx.fillText(`TILT: ${Math.round(robotState.tiltAngle)}°  PAN: ${Math.round(robotState.panAngle)}°`, 15, 45);
-  fpvCtx.fillText(`IR SENSORS: L:${robotState.irSensors[0]} C:${robotState.irSensors[1]} R:${robotState.irSensors[2]}`, 15, 65);
+  // 2. Render Target Pallina Verde (OpenCV)
+  var ball = arenaObjects.targetBall;
+  var bdx = ball.x - robotState.x, bdy = ball.y - robotState.y, bdist = Math.hypot(bdx, bdy);
+  var bDiff = Math.atan2(bdy, bdx) - (robotState.angle + (robotState.panAngle * Math.PI / 180));
+  while (bDiff < -Math.PI) bDiff += Math.PI * 2;
+  while (bDiff > Math.PI) bDiff -= Math.PI * 2;
+
+  if (Math.abs(bDiff) < 0.75 && bdist < 380) {
+    var bsx = (fpvCanvas.width / 2) + (bDiff * 420), bsy = horizon + 30 + (2000 / bdist), bsize = Math.max(10, 1600 / bdist);
+    fpvCtx.fillStyle = ball.color; fpvCtx.beginPath(); fpvCtx.arc(bsx, bsy, bsize, 0, Math.PI * 2); fpvCtx.fill();
+  }
+
+  // 3. Overlay HUD Telecamera
+  fpvCtx.fillStyle = 'rgba(0, 240, 255, 0.85)'; fpvCtx.font = '10px monospace';
+  fpvCtx.fillText('CAM FPV: VLM VISION (LLaVA ACTIVE)', 10, 18);
+  fpvCtx.fillText('PAN: ' + Math.round(robotState.panAngle) + '°  TILT: ' + Math.round(robotState.tiltAngle) + '°', 10, 32);
 }

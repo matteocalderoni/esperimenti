@@ -5,15 +5,17 @@
 # Date		  : 2025/03/12
 from importlib import import_module
 import os
-from flask import Flask, render_template, Response, send_from_directory
+from flask import Flask, render_template, Response, send_from_directory, request, jsonify
 from flask_cors import *
 
 from camera_opencv import Camera
 import threading
+from vision.vlm_inspector import VLMInspector
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 camera = Camera()
+vlm_service = VLMInspector(model='moondream')
 
 def gen(camera):
     while True:
@@ -25,6 +27,16 @@ def gen(camera):
 def video_feed():
     return Response(gen(camera),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/api/vlm_inspect', methods=['POST'])
+def vlm_inspect_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        img_b64 = data.get('image', '')
+        res = vlm_service.analyze_frame(img_b64)
+        return jsonify(res)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e), "landmarks": []})
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 

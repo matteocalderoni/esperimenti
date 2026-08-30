@@ -5,7 +5,7 @@ function updatePhysics() {
   // 1. Aggiornamento cinematica 4WD e collisione solida muri
   updateKinematics();
 
-  // 2. Calcolo ultrasuoni (Multi-Ray Bumper Proximity Array per APF) e sensori IR
+  // 2. Calcolo ultrasuoni (Multi-Ray Bumper Proximity Array) e sensori IR
   updateSensors();
 
   // 3. Esecuzione automazioni (solo in modalità JS Experimental)
@@ -36,20 +36,12 @@ function executeJSBehaviors() {
     return;
   }
 
-  // 2. Guardia Ostacoli con Campi di Potenziale Artificiali (APF)
-  // Durante l'esplorazione è attiva solo negli spostamenti (NAVIGATE), disattivata nelle scansioni testa da fermo
-  const isExplorationMoving = (mode === 'exploration' && typeof slamMap !== 'undefined' && slamMap && slamMap.fsmState === 'NAVIGATE');
-  const shouldCheckObstacles = (mode !== 'exploration') || isExplorationMoving;
-
-  if (shouldCheckObstacles) {
+  // 2. Guardia Ostacoli APF (attiva solo nelle modalità reattive, NON in exploration che ha il suo pathfinder A*)
+  if (mode !== 'exploration') {
     let guardOptions = {};
-    if (mode === 'findColor') {
-      guardOptions = { dInfluence: 0.40, stopThreshold: 0.20 };
-    } else if (mode === 'trackLight') {
-      guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
-    } else if (mode === 'exploration') {
-      guardOptions = { dInfluence: 0.35, dangerThresh: 0.18, stopThreshold: 0.15 };
-    }
+    if (mode === 'findColor') guardOptions = { dInfluence: 0.40, stopThreshold: 0.20 };
+    else if (mode === 'trackLight') guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
+    else if (mode === 'automatic') guardOptions = { dInfluence: 0.65, dangerThresh: 0.18 };
 
     if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles(guardOptions)) {
       return;

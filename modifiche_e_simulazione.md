@@ -33,11 +33,11 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 
 5. **Sviluppo & Potenziamento del Modulo di Esplorazione Autonoma 2D & SLAM (`core/` & `behaviors/exploration.js`)**:
    * **Occupancy Grid 2D 100% Ignota & Dilatazione 30px**: Matrice $70 \times 52$ che parte completamente priva di muri artificiali preimpostati (tutte le celle a `-1`); i muri e i confini vengono scoperti unicamente mediante raycasting e dilatati a 3 celle (30 px) per il passaggio del robot.
+   * **Simulazione Cucina Abitabile & Riconoscimento VLM**: Sostituzione dei blocchi generici con mobili ed elettrodomestici realistici (piano cottura, frigo, tavolo, penisola, credenza), identificati in prospettiva con bounding box AI VLM (Ollama LLaVA).
+   * **Tavola Architettonica CAD con Simboli d'Arredo (`cad_renderer.js`)**: Campitura muraria a 45°, quote metriche su ciascun mobile/tramezzo, simboli grafici di arredo e cartiglio con destinazione d'uso *Cucina Abitabile*.
    * **Doppia Scansione Panoramica a 360° con Rotazione 180°**: Scansione iniziale Pan-Tilt, verifica assenza ostacoli adiacenti, rotazione sul posto del telaio di 180° e seconda scansione per mappare a 360° l'intero intorno di partenza.
    * **Euristica Information Gain & Hunter Mode per Target 99%**: Ranking frontiere per macro-settori ciechi e algoritmo Hunter per individuare e ripulire anche gli ultimi micro-angoli inesplorati fino al raggiungimento del **99% di copertura**.
-   * **Tavola Architettonica CAD & Quotatura Tramezzi (`cad_dimensions.js`, `cad_renderer.js`)**: Campitura muraria a 45° sui muri sezionati, squadratura tavola da disegno, estrazione e quotatura dei tramezzi e speroni collegati al perimetro, cartiglio catastale formale e visualizzatore HD in-browser.
    * **Navigazione Proattiva e Risoluzione Conflitti APF**: Eliminato il blocco tra guardia ostacoli e $A^*$, con gestione progressiva della curvatura e ricalcolo rapido in caso di imprevisti.
-   * **Architettura Simmetrica**: Supporto completo sia in Python (`robot_server/behaviors/room_explorer.py`) sia in JavaScript con canvas live (`render_map.js`).
 
 6. **Guardia Ostacoli Unificata & Manovre di Fuga (`obstacle_guard.js`)**:
    * Algoritmo a doppia soglia (rosso $< 25\text{ cm}$, giallo $< 80\text{ cm}$) e rilevamento stallo (`stuckFrames >= 60`) per disimpegnare automaticamente il robot da angoli ciechi.

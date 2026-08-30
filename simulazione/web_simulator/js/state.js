@@ -49,19 +49,13 @@ const arenaObjects = {
     {x: 150, y: 370},
     {x: 100, y: 260}
   ],
-  // Muri e Ostacoli Fisici (Include barriere adiacenti ai bordi per percorsi slalom/labirinto)
+  // Mobili ed Elettrodomestici della Cucina Abitabile (Texture Fotografiche Reali & VLM)
   walls: [
-    // Barriera sporgente dal bordo superiore
-    {x: 180, y: 0, w: 25, h: 130},
-    // Barriera sporgente dal bordo inferiore
-    {x: 460, y: 390, w: 25, h: 130},
-    // Barriera adiacente al bordo sinistro
-    {x: 0, y: 250, w: 120, h: 25},
-    // Barriera adiacente al bordo destro
-    {x: 580, y: 180, w: 120, h: 25},
-    // Isole centrali per chicane
-    {x: 290, y: 190, w: 110, h: 25},
-    {x: 360, y: 300, w: 25, h: 85}
+    { x: 30, y: 20, w: 200, h: 45, name: 'Piano Cottura & Lavello', icon: '🍳', category: 'kitchen', vlm: 'Piano cottura e lavello inox', asset: '/simulator/assets/furniture/stove_sink.jpg' },
+    { x: 20, y: 380, w: 55, h: 55, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' },
+    { x: 260, y: 200, w: 150, h: 80, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
+    { x: 480, y: 20, w: 45, h: 140, name: 'Penisola / Bancone', icon: '🍸', category: 'counter', vlm: 'Penisola snack con sgabelli', asset: '/simulator/assets/furniture/peninsula.jpg' },
+    { x: 430, y: 440, w: 140, h: 45, name: 'Mobile Credenza', icon: '🗄️', category: 'storage', vlm: 'Credenza madia cucina', asset: '/simulator/assets/furniture/sideboard.jpg' }
   ],
   // Target Colore per OpenCV (Pallina verde)
   targetBall: { x: 350, y: 90, radius: 18, color: '#00ff55' },

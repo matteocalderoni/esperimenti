@@ -77,12 +77,12 @@ def test_blind_quadrant_and_hunter_mode():
 def test_vlm_fallback():
     print("\n🔍 Test 4: VLM Inspector (Ollama Connection & Fallback)...")
     vlm = VLMInspector(ollama_url="http://localhost:11434")
-    available = vlm.is_available()
-    print(f"   ℹ️ Ollama Server Disponibile: {available}")
-    
+    cat_ids = [c["id"] for c in vlm.catalog]
+    assert "piano_cottura" in cat_ids, "I landmark cucina devono includere il piano cottura"
+    assert "frigorifero" in cat_ids, "I landmark cucina devono includere il frigorifero"
     res = vlm.analyze_frame("data:image/jpeg;base64,/9j/4AAQSkZJRg==")
     assert "landmarks" in res, "La risposta deve contenere la chiave 'landmarks'"
-    print(f"   ✅ VLM Inspector Fallback OK! Risultato: {res}")
+    print(f"   ✅ VLM Inspector & Catalogo Cucina OK! Risultato: {res}")
 
 if __name__ == "__main__":
     print("🚀 AVVIO TEST UNITARI MODULO ESPLORAZIONE 2D & VLM")

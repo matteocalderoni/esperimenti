@@ -1,8 +1,8 @@
 // simulazione/web_simulator/js/slam/slam_planner.js
-// Algoritmi di Dilatazione (radius=3), Rilevamento Frontiere/Hunter e Pathfinding A*
+// Algoritmi di Dilatazione Adattiva, Rilevamento Frontiere/Hunter e Pathfinding A*
 
 function getDilatedSlamGrid(radius) {
-  if (!radius) radius = 3; // Buffer 30px di sicurezza contro spigoli e collisioni
+  if (!radius) radius = 2;
   var dGrid = slamMap.grid.map(function(row) { return row.slice(); });
   for (var y = 0; y < slamMap.height; y++) {
     for (var x = 0; x < slamMap.width; x++) {
@@ -17,17 +17,6 @@ function getDilatedSlamGrid(radius) {
     }
   }
   return dGrid;
-}
-
-function getBlindQuadrant() {
-  var counts = [{ qx: 0, qy: 0, c: 0 }, { qx: 1, qy: 0, c: 0 }, { qx: 0, qy: 1, c: 0 }, { qx: 1, qy: 1, c: 0 }];
-  var midX = Math.floor(slamMap.width / 2), midY = Math.floor(slamMap.height / 2);
-  for (var y = 0; y < slamMap.height; y++) {
-    for (var x = 0; x < slamMap.width; x++) {
-      if (slamMap.grid[y][x] === -1) counts[(x >= midX ? 1 : 0) + (y >= midY ? 2 : 0)].c++;
-    }
-  }
-  return counts.sort(function(a, b) { return b.c - a.c; })[0];
 }
 
 function findSlamFrontiers() {
@@ -57,7 +46,7 @@ function findSlamFrontiers() {
             }
           }
         }
-        if (cluster.length >= 1) { // Riconosce anche micro-frontiere per il 99%
+        if (cluster.length >= 1) {
           var sumX = 0, sumY = 0;
           for (var ci = 0; ci < cluster.length; ci++) { sumX += cluster[ci].x; sumY += cluster[ci].y; }
           centroids.push({ gx: Math.round(sumX/cluster.length), gy: Math.round(sumY/cluster.length), size: cluster.length });
@@ -90,40 +79,25 @@ function findHunterTarget(cur, dGrid) {
 }
 
 function rankFrontiersByBlindness(cur, frontiers) {
-  var bq = getBlindQuadrant(), midX = Math.floor(slamMap.width / 2), midY = Math.floor(slamMap.height / 2);
+  var midX = Math.floor(slamMap.width / 2), midY = Math.floor(slamMap.height / 2);
   frontiers.forEach(function(f) {
     var dist = Math.hypot(f.gx - cur.gx, f.gy - cur.gy), unexp = 0;
-    for (var dy = -6; dy <= 6; dy += 2) {
-      for (var dx = -6; dx <= 6; dx += 2) {
+    for (var dy = -5; dy <= 5; dy += 2) {
+      for (var dx = -5; dx <= 5; dx += 2) {
         var ny = f.gy + dy, nx = f.gx + dx;
         if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width && slamMap.grid[ny][nx] === -1) unexp++;
       }
     }
-    var inBlind = ((f.gx >= midX ? 1 : 0) === bq.qx && (f.gy >= midY ? 1 : 0) === bq.qy) ? 35 : 0;
-    f.score = (unexp * 3.0) + (f.size * 1.5) + inBlind - (dist * 0.7);
+    f.score = (unexp * 3.0) + (f.size * 1.5) - (dist * 0.6);
   });
   return frontiers.sort(function(a, b) { return b.score - a.score; });
 }
 
 function planSlamAStar(start, goal, dGrid) {
-  var gx = goal.gx, gy = goal.gy;
-  if (dGrid[gy] && dGrid[gy][gx] === 1) {
-    var found = false;
-    for (var r = 1; r <= 5 && !found; r++) {
-      for (var fdy = -r; fdy <= r && !found; fdy++) {
-        for (var fdx = -r; fdx <= r && !found; fdx++) {
-          var ny = gy + fdy, nx = gx + fdx;
-          if (ny > 0 && ny < slamMap.height-1 && nx > 0 && nx < slamMap.width-1 && dGrid[ny][nx] !== 1) {
-            gx = nx; gy = ny; found = true;
-          }
-        }
-      }
-    }
-    if (!found) return [];
-  }
-  var sx = start.gx, sy = start.gy, openSet = [{ x: sx, y: sy, g: 0, f: Math.hypot(gx-sx, gy-sy) }], cameFrom = {}, gScore = {};
+  var gx = goal.gx, gy = goal.gy, sx = start.gx, sy = start.gy;
+  var openSet = [{ x: sx, y: sy, g: 0, f: Math.hypot(gx-sx, gy-sy) }], cameFrom = {}, gScore = {};
   gScore[sx+','+sy] = 0; var iter = 0;
-  while (openSet.length > 0 && iter++ < 4000) {
+  while (openSet.length > 0 && iter++ < 3500) {
     openSet.sort(function(a,b){return a.f-b.f;});
     var curr = openSet.shift();
     if (curr.x === gx && curr.y === gy) {
@@ -131,17 +105,29 @@ function planSlamAStar(start, goal, dGrid) {
       while (node) { path.push({ gx: node.x, gy: node.y }); var prev = cameFrom[key]; if (!prev) break; key = prev.x+','+prev.y; node = prev; }
       path.reverse(); return path;
     }
-    var dirs = [{dx:1,dy:0,c:1},{dx:-1,dy:0,c:1},{dx:0,dy:1,c:1},{dx:0,dy:-1,c:1},{dx:1,dy:1,c:1.414},{dx:-1,dy:1,c:1.414},{dx:1,dy:-1,c:1.414},{dx:-1,dy:-1,c:1.414}];
+    var dirs = [{dx:1,dy:0,c:1},{dx:-1,dy:0,c:1},{dx:0,dy:1,c:1},{dx:0,dy:-1,c:1},{dx:1,dy:1,c:1.4},{dx:-1,dy:1,c:1.4},{dx:1,dy:-1,c:1.4},{dx:-1,dy:-1,c:1.4}];
     for (var di = 0; di < dirs.length; di++) {
       var d = dirs[di], nnx = curr.x+d.dx, nny = curr.y+d.dy;
-      if (nnx > 0 && nnx < slamMap.width-1 && nny > 0 && nny < slamMap.height-1 && dGrid[nny][nnx] !== 1) {
-        var tentG = curr.g + d.c, nKey = nnx+','+nny;
-        if (gScore[nKey] === undefined || tentG < gScore[nKey]) {
-          cameFrom[nKey] = { x: curr.x, y: curr.y }; gScore[nKey] = tentG;
-          openSet.push({ x: nnx, y: nny, g: tentG, f: tentG + Math.hypot(gx-nnx, gy-nny) });
+      if (nnx > 0 && nnx < slamMap.width-1 && nny > 0 && nny < slamMap.height-1) {
+        if (dGrid[nny][nnx] !== 1 || (curr.x === sx && curr.y === sy && slamMap.grid[nny][nnx] !== 1)) {
+          var tentG = curr.g + d.c, nKey = nnx+','+nny;
+          if (gScore[nKey] === undefined || tentG < gScore[nKey]) {
+            cameFrom[nKey] = { x: curr.x, y: curr.y }; gScore[nKey] = tentG;
+            openSet.push({ x: nnx, y: nny, g: tentG, f: tentG + Math.hypot(gx-nnx, gy-nny) });
+          }
         }
       }
     }
+  }
+  return [];
+}
+
+function planAdaptiveSlamAStar(start, goal) {
+  var rads = [2, 1, 0];
+  for (var i = 0; i < rads.length; i++) {
+    var dg = getDilatedSlamGrid(rads[i]);
+    var p = planSlamAStar(start, goal, dg);
+    if (p && p.length > 1) return p;
   }
   return [];
 }

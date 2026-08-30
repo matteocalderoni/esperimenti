@@ -27,13 +27,24 @@ function drawArena() {
   arenaCtx.closePath();
   arenaCtx.stroke();
 
-  // 3. Disegna Ostacoli (Muri Mappati)
-  arenaCtx.fillStyle = 'rgba(131, 56, 236, 0.4)';
-  arenaCtx.strokeStyle = '#8338ec';
-  arenaCtx.lineWidth = 2;
+  // 3. Disegna Mobili ed Elettrodomestici Cucina
   for (const w of arenaObjects.walls) {
+    arenaCtx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    arenaCtx.strokeStyle = '#38bdf8';
+    arenaCtx.lineWidth = 1.5;
     arenaCtx.fillRect(w.x, w.y, w.w, w.h);
     arenaCtx.strokeRect(w.x, w.y, w.w, w.h);
+
+    // Decorazione interna (fornelli, lavello, frigo, tavolo)
+    if (w.name.includes('Piano Cottura')) {
+      arenaCtx.fillStyle = 'rgba(56,189,248,0.2)'; arenaCtx.fillRect(w.x+4, w.y+4, w.w*0.4, w.h-8); // lavello
+      arenaCtx.strokeStyle = '#f59e0b'; arenaCtx.strokeRect(w.x+w.w*0.5, w.y+6, w.w*0.45, w.h-12); // fornelli
+    } else if (w.name.includes('Tavolo')) {
+      arenaCtx.strokeStyle = 'rgba(255,255,255,0.2)'; arenaCtx.strokeRect(w.x+8, w.y+8, w.w-16, w.h-16);
+    }
+    arenaCtx.fillStyle = '#f8fafc'; arenaCtx.font = 'bold 8px monospace';
+    arenaCtx.textAlign = 'center'; arenaCtx.textBaseline = 'middle';
+    arenaCtx.fillText((w.icon || '📦') + ' ' + w.name, w.x + w.w / 2, w.y + w.h / 2);
   }
 
   // 4. Disegna Target Colore (Pallina verde per OpenCV)
