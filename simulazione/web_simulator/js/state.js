@@ -1,5 +1,11 @@
 // simulazione/web_simulator/js/state.js
 
+// Passo temporale di riferimento della simulazione: 60 fps.
+// Velocita' e sterzo sono grandezze fisiche (px/s, rad/s), non per frame:
+// il moto dipende dal tempo trascorso e non dal frame rate del browser.
+const SIM_DT = 1 / 60;
+const SIM_MAX_DT = 1 / 15;   // passo massimo accettato dopo una pausa del browser
+
 // Ingombro fisico del telaio: raggio di collisione in pixel.
 // Unica fonte di verita' per cinematica, pianificatore e sensori.
 const CAR_RADIUS_PX = 22;
@@ -10,9 +16,9 @@ const robotState = {
   x: 350,
   y: 150,
   angle: 0,           // Angolo di rotta in radianti (0 = destra, PI/2 = giù)
-  speed: 0,           // Velocità lineare (-5 a +5)
-  steering: 0,        // Angolo di sterzo (-0.05 a +0.05)
-  maxSpeed: 3.5,
+  speed: 0,           // Velocità lineare in px/s
+  steering: 0,        // Velocità angolare in rad/s
+  maxSpeed: 210,      // px/s
 
   // Servomotori Pan-Tilt
   panAngle: 0,        // -90° (destra) a +90° (sinistra)

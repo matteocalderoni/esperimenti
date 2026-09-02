@@ -40,9 +40,9 @@ function runExplorationBehavior() {
   // 2. ROTATE_180: Rotazione controllata del telaio solo se c'è spazio libero
   if (slamMap.fsmState === 'ROTATE_180') {
     robotState.speed = 0;
-    var stepAngle = 0.08;
+    var stepAngle = 4.8;   // rad/s
     robotState.steering = stepAngle;
-    slamMap.rotateAngleLeft = (slamMap.rotateAngleLeft || Math.PI) - stepAngle;
+    slamMap.rotateAngleLeft = (slamMap.rotateAngleLeft || Math.PI) - stepAngle * SIM_DT;
     if (typeof scanAllRays === 'function') scanAllRays();
 
     if (slamMap.rotateAngleLeft <= 0) {
@@ -86,12 +86,31 @@ function runExplorationBehavior() {
     var path = [];
     if (frontiers.length > 0) {
       var ranked = (typeof rankFrontiersByBlindness === 'function') ? rankFrontiersByBlindness(cur, frontiers) : frontiers;
-      var limit = Math.min(10, ranked.length);
+      // Con la dilatazione ancorata all'ingombro le frontiere meglio classificate
+      // sono spesso quelle addossate ai mobili, quindi irraggiungibili: fermarsi
+      // alle prime dieci faceva dichiarare COMPLETE con spazio ancora esplorabile.
+      var limit = Math.min(30, ranked.length);
       for (var fi = 0; fi < limit; fi++) {
         path = planAdaptiveSlamAStar(cur, ranked[fi]);
         if (path.length > 1) { slamMap.targetFrontier = ranked[fi]; break; }
       }
-    } else if (slamMap.stats.exploredPct < 99 && typeof findHunterTarget === 'function') {
+
+      // Nessuna frontiera raggiungibile: non serve arrivarci sopra, basta
+      // vederla. Si punta alla posa di osservazione piu' vicina.
+      if (path.length <= 1 && typeof findObservationPose === 'function') {
+        var dGrid = getDilatedSlamGrid();
+        var quante = Math.min(12, ranked.length);
+        for (var oi = 0; oi < quante; oi++) {
+          var posa = findObservationPose(cur, ranked[oi], dGrid);
+          if (!posa) continue;
+          path = planAdaptiveSlamAStar(cur, posa);
+          if (path.length > 1) { slamMap.targetFrontier = ranked[oi]; break; }
+        }
+      }
+    }
+    // Ripiego sulla cella ignota piu' vicina anche quando esistono frontiere ma
+    // nessuna di esse e' raggiungibile in sicurezza.
+    if (path.length <= 1 && slamMap.stats.exploredPct < 99 && typeof findHunterTarget === 'function') {
       var hunter = findHunterTarget(cur, getDilatedSlamGrid());
       if (hunter) path = planAdaptiveSlamAStar(cur, hunter);
     }

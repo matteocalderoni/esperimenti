@@ -13,7 +13,7 @@ function runAutomaticBehavior() {
     robotState.panSweepDir = 1.5;
   }
 
-  robotState.speed = 1.6;
+  robotState.speed = 96;
   robotState.steering = 0;
 }
 

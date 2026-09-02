@@ -14,17 +14,17 @@ function runTrackLineBehavior() {
   robotState.panAngle = 0;
 
   if (center === 0) {
-    robotState.speed = 2.2;
+    robotState.speed = 132;
     robotState.steering = 0;
   } else if (left === 0) {
-    robotState.speed = 1.6;
-    robotState.steering = -0.06;
+    robotState.speed = 96;
+    robotState.steering = -3.6;
   } else if (right === 0) {
-    robotState.speed = 1.6;
-    robotState.steering = 0.06;
+    robotState.speed = 96;
+    robotState.steering = 3.6;
   } else {
-    robotState.speed = 0.5;
-    robotState.steering = 0.05;
+    robotState.speed = 30;
+    robotState.steering = 3;
   }
 }
 

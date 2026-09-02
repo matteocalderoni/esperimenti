@@ -22,7 +22,7 @@ function setup(muri, pan = 0) {
   sim.arenaObjects.walls.length = 0;
   muri.forEach((m) => sim.arenaObjects.walls.push(m));
   sim.arenaObjects.lineTrack.length = 0;
-  Object.assign(sim.robotState, { x: 223, y: 219, angle: 0, panAngle: pan, speed: 1.0, steering: 0 });
+  Object.assign(sim.robotState, { x: 223, y: 219, angle: 0, panAngle: pan, speed: 60, steering: 0 });
   sim.updateSensors();
   return sim;
 }
@@ -48,7 +48,7 @@ function test_ostacolo_costeggiato_non_ferma_il_robot() {
 
   const speed = inseguiPercorsoDritto(sim);
 
-  assert.ok(speed > 0.4,
+  assert.ok(speed > 24,
     `Con il fronte libero a ${sim.robotState.frontDist.toFixed(2)} m il robot deve procedere, ` +
     `invece la velocita' e' scesa a ${speed.toFixed(2)} (frenata d'emergenza)`);
   console.log(`   ✅ Fronte libero: velocita' mantenuta a ${speed.toFixed(2)}.`);

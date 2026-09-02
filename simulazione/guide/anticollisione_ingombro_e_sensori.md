@@ -176,3 +176,92 @@ l'eccezione dello stop&wait del tracciamento linea.
   **ciclo limite**: scansa, il goal lo richiama, riscansa. Non è pericoloso (zero
   urti in 80 tick di prova) e il rilevamento di stallo a 40 tick forza comunque un
   nuovo piano, ma è il motivo per cui il DWA da solo non basta: serve l'A\* sopra.
+
+---
+
+# Intervento 4: regressione della mappatura, quote e cinematica a tempo
+
+Data: 2026-09-02.
+
+## 4a. La mappatura era peggiorata: perché
+
+Segnalazione: "la mappatura e la guida sono peggiorate". I contatori dicevano
+zero collisioni, ma non misuravano la *qualità* della mappa. Confronto A/B fra il
+commit `3be6611` (prima di tutto) e `a5b6ee5` (dopo il DWA), stessa metrica,
+20.000 tick, tramite worktree git:
+
+| | PRIMA | DOPO DWA |
+|---|---|---|
+| copertura | 88% | 86% |
+| richiamo muri | 48,9% | 44,5% |
+| tortuosità (rad/100px) | 19,54 | 3,47 |
+| inversioni di marcia | 10 | 0 |
+| collisioni | 5 | 0 |
+
+La guida era migliorata, la **mappa no**: l'esplorazione dichiarava `COMPLETE` al
+tick 691 e da lì non migliorava più. Al momento della resa restavano 11 frontiere,
+nessuna raggiungibile: con la dilatazione ancorata all'ingombro finiscono in
+varchi in cui il telaio non entra. La versione precedente ci arrivava perché
+degradava la sicurezza a r=0, cioè passando *dentro* i muri.
+
+**Correzione**: il robot non deve *raggiungere* la frontiera, deve *vederla*.
+Nuovo modulo `slam/slam_observation.js`: quando nessuna frontiera è raggiungibile
+cerca la **posa di osservazione** più vicina — una cella sicura, già esplorata, con
+linea di vista sulla frontiera — e ci pianifica sopra. La scansione della testa fa
+il resto.
+
+Risultato: copertura 88%, richiamo muri **50,8%** (meglio del riferimento), 4 falsi
+muri, 96,2% di celle libere corrette — senza mai guidare dentro un ostacolo.
+
+## 4b. Quote della piantina
+
+Le quote erano **sbagliate**: `cad_renderer.js` e `cad_dimensions.js` assumevano
+10 px per cella, ma la cella misura 6,37 × 8,42 px. La piantina dichiarava
+"4.38 × 3.25 m" per un'arena che misura **2,79 × 2,74 m**, e la superficie usava
+un `* 0.0039` con lo stesso errore.
+
+- Nuovo `slam/slam_metrics.js`: unica conversione griglia → metri, per asse.
+- Nuovo `slam/slam_clusters.js`: rileva gli ingombri interni come componenti
+  connesse di celle occupate che non toccano il perimetro. Serviva perché gli
+  arredi arrivavano **solo dal VLM**, che senza Ollama attivo non risponde: la
+  piantina restava priva di quote sui singoli elementi.
+- `cad_renderer.js` quota ogni ingombro rilevato. Verifica sul campo: piano
+  cottura misurato 1,31 × 0,32 m (reale 1,25 × 0,28), tavolo 1,00 × 0,58 m
+  (reale 0,94 × 0,50) — scarto di circa una cella.
+
+## 4c. Cinematica a tempo continuo (`dt`)
+
+Velocità e sterzo erano in px/frame e rad/frame, mai dimensionati fra loro: il
+comportamento dipendeva dal frame rate e le costanti del DWA restavano empiriche.
+
+Ora `robotState.speed` è in **px/s**, `robotState.steering` in **rad/s**, e
+l'integrazione è `angle += steering * dt`, `x += cos(angle) * speed * dt`.
+Convertite tutte le assegnazioni nei comportamenti, nella guardia, nel telecomando
+e nel DWA (`accSpeed` 1260 px/s², `accSteer` 216 rad/s², `maxSteer` 8,4 rad/s).
+`main.js` calcola il `dt` reale dai timestamp di `requestAnimationFrame`, con
+tetto `SIM_MAX_DT` (1/15 s) per assorbire le pause della scheda in secondo piano.
+
+Il criterio di frenata del DWA, `v ≤ √(2·a·spazio)`, ora è dimensionalmente
+corretto: prima mescolava px/frame con px/frame².
+
+## Test aggiunti
+
+```bash
+node simulazione/test_kinematics_dt.js --tutti        # indipendenza dal frame rate
+node simulazione/test_cad_dimensions.js --tutti       # quote in metri reali
+node simulazione/test_slam_clusters.js --tutti        # rilevamento ingombri
+node simulazione/test_exploration_coverage.js --tutti # copertura end-to-end
+```
+
+Il test di copertura è una **rete di sicurezza contro le regressioni**: esegue
+l'esplorazione completa headless e confronta la mappa finale con la verità a
+terra, con soglie fissate sul risultato della versione precedente.
+
+## Nota di metodo
+
+Un errore introdotto in questa sessione è sfuggito ai test Node e l'ha preso il
+browser: un commento a fine riga in `websocket.js` aveva inglobato la graffa di
+chiusura. L'harness headless esclude di proposito i moduli che richiedono il DOM,
+quindi `websocket.js`, `controls.js` e i renderer **non sono coperti dai test**:
+dopo una modifica a quei file va controllata la console del browser, oppure
+`node --check <file>` per la sola sintassi.

@@ -42,7 +42,7 @@ function analyzeRoomGeometry() {
         }
       }
       var spanX = Math.max(3, fMaxX - fMinX + 1), spanY = Math.max(3, fMaxY - fMinY + 1);
-      var wM = (spanX * 10 / 160.0).toFixed(2), hM = (spanY * 10 / 160.0).toFixed(2);
+      var wM = slamSpanMeters(spanX, 'x').toFixed(2), hM = slamSpanMeters(spanY, 'y').toFixed(2);
       var furnItem = {
         minX: Math.max(0, fMinX), maxX: Math.min(slamMap.width - 1, fMaxX),
         minY: Math.max(0, fMinY), maxY: Math.min(slamMap.height - 1, fMaxY),

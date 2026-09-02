@@ -4,9 +4,9 @@
 function runKeepDistanceBehavior() {
   robotState.panAngle = 0;
   if (robotState.ultrasonicDist > 0.40) {
-    robotState.speed = 1.8;
+    robotState.speed = 108;
   } else if (robotState.ultrasonicDist < 0.25) {
-    robotState.speed = -1.5;
+    robotState.speed = -90;
   } else {
     robotState.speed = 0;
   }

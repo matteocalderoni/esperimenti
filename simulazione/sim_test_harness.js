@@ -74,4 +74,50 @@ function markRestFree(slamMap) {
   }
 }
 
-module.exports = { loadSim, fakeCanvas, clearanceFromWalls, fillCells, markRestFree, JS_DIR };
+/**
+ * Carica l'intero simulatore nell'ordine dichiarato da index.html, escludendo
+ * i moduli che richiedono un DOM o la rete. Serve ai test end-to-end.
+ */
+function loadSimFromIndex() {
+  const html = fs.readFileSync(path.join(__dirname, 'web_simulator', 'index.html'), 'utf8');
+  const senzaDom = ['three_scene', 'render_arena', 'render_map', 'render_fpv', 'websocket', 'controls', 'main'];
+  const files = [...html.matchAll(/js\/([a-z_/]+)\.js/g)]
+    .map((m) => m[1] + '.js')
+    .filter((f, i, a) => a.indexOf(f) === i)
+    .filter((f) => !senzaDom.some((e) => f.includes(e)));
+
+  return loadSim(files,
+    ['robotState', 'arenaObjects', 'slamMap', 'updatePhysics', 'initSlamGrid',
+     'slamGridToWorld', 'updateSensors', 'jsBehaviors'],
+    { arenaCanvas: fakeCanvas(446, 438), fetch: () => Promise.reject(new Error('offline')) });
+}
+
+/** Qualita' della mappa SLAM confrontata con la verita' a terra dell'arena. */
+function groundTruthMapQuality(sim, W = 446, H = 438, bordo = 12) {
+  const cell = W / sim.slamMap.width;
+  const eMuro = (x, y) =>
+    x < bordo || x > W - bordo || y < bordo || y > H - bordo ||
+    sim.arenaObjects.walls.some((m) => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
+
+  let muriVeri = 0, muriTrovati = 0, falsiMuri = 0, libereOk = 0, libereTot = 0;
+  for (let gy = 0; gy < sim.slamMap.height; gy++) {
+    for (let gx = 0; gx < sim.slamMap.width; gx++) {
+      const w = sim.slamGridToWorld(gx, gy);
+      const v = sim.slamMap.grid[gy][gx];
+      if (eMuro(w.x, w.y)) { muriVeri++; if (v === 1) muriTrovati++; continue; }
+      libereTot++;
+      if (v === 0) libereOk++;
+      if (v === 1 && !eMuro(w.x + cell, w.y) && !eMuro(w.x - cell, w.y) &&
+          !eMuro(w.x, w.y + cell) && !eMuro(w.x, w.y - cell)) falsiMuri++;
+    }
+  }
+  return {
+    copertura: sim.slamMap.stats.exploredPct,
+    richiamoMuri: +(100 * muriTrovati / Math.max(1, muriVeri)).toFixed(1),
+    falsiMuri,
+    libereCorrette: +(100 * libereOk / Math.max(1, libereTot)).toFixed(1)
+  };
+}
+
+module.exports = { loadSim, loadSimFromIndex, groundTruthMapQuality, fakeCanvas,
+                   clearanceFromWalls, fillCells, markRestFree, JS_DIR };

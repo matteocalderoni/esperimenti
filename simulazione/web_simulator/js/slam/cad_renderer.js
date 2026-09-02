@@ -30,6 +30,20 @@ function drawCadTickLineTheme(ctx, x1, y1, x2, y2, label, isVert, dark) {
   ctx.restore();
 }
 
+/** Quota larghezza x profondita' stampata sotto un blocco arredo. */
+function drawCadBlockDimensions(ctx, f, ox, oy, ow, oh, dark, testoDato) {
+  var testo = testoDato || (formatQuota(slamSpanMeters(f.maxX - f.minX + 1, 'x')) + ' × ' +
+                            formatQuota(slamSpanMeters(f.maxY - f.minY + 1, 'y')));
+  ctx.font = 'bold 7px monospace';
+  var tw = ctx.measureText(testo).width;
+  var cx = ox + ow / 2, cy = oy + oh + 7;
+  ctx.fillStyle = dark ? 'rgba(5,12,26,0.85)' : 'rgba(255,255,255,0.9)';
+  ctx.fillRect(cx - tw / 2 - 3, cy - 6, tw + 6, 11);
+  ctx.fillStyle = dark ? '#00f0ff' : '#0f172a';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(testo, cx, cy);
+}
+
 function renderCadBlueprint(ctx, w, h) {
   var dark = (cadTheme === 'dark');
   ctx.fillStyle = dark ? '#050c1a' : '#ffffff'; ctx.fillRect(0, 0, w, h);
@@ -55,6 +69,7 @@ function renderCadBlueprint(ctx, w, h) {
   (geo.furniture || []).forEach(function(f) {
     var ox = f.minX * cellW, oy = f.minY * cellH, ow = (f.maxX - f.minX + 1) * cellW, oh = (f.maxY - f.minY + 1) * cellH;
     var n = (f.furnName || '').toLowerCase();
+    drawCadBlockDimensions(ctx, f, ox, oy, ow, oh, dark);
     if (n.includes('tavolo')) drawCadDiningTable(ctx, ox, oy, ow, oh);
     else if (n.includes('cottura') || n.includes('lavello')) drawCadCooktopSink(ctx, ox, oy, ow, oh);
     else if (n.includes('penisola') || n.includes('bancone')) drawCadPeninsula(ctx, ox, oy, ow, oh);
@@ -62,11 +77,25 @@ function renderCadBlueprint(ctx, w, h) {
     else if (n.includes('credenza') || n.includes('mobile')) drawCadCabinet(ctx, ox, oy, ow, oh);
   });
 
+  // 2b. Quote sugli ingombri rilevati dalla sola griglia (non richiedono il VLM)
+  if (typeof findSlamClusters === 'function' && (geo.furniture || []).length === 0) {
+    findSlamClusters().forEach(function (b) {
+      var ox = b.minX * cellW, oy = b.minY * cellH;
+      var ow = (b.maxX - b.minX + 1) * cellW, oh = (b.maxY - b.minY + 1) * cellH;
+      ctx.strokeStyle = dark ? 'rgba(0,240,255,0.55)' : 'rgba(15,23,42,0.55)';
+      ctx.lineWidth = 0.8; ctx.setLineDash([3, 2]);
+      ctx.strokeRect(ox, oy, ow, oh);
+      ctx.setLineDash([]);
+      drawCadBlockDimensions(ctx, null, ox, oy, ow, oh, dark,
+        formatQuota(b.larghezzaM) + ' × ' + formatQuota(b.profonditaM));
+    });
+  }
+
   // 3. Quote Esterne a Catena ed Assi Cerchiati
   if (geo.bounds) {
     var bx1 = geo.bounds.minX * cellW, bx2 = (geo.bounds.maxX + 1) * cellW, by1 = geo.bounds.minY * cellH, by2 = (geo.bounds.maxY + 1) * cellH;
-    var wM = (((geo.bounds.maxX - geo.bounds.minX + 1) * 10) / 160.0).toFixed(2) + ' m';
-    var hM = (((geo.bounds.maxY - geo.bounds.minY + 1) * 10) / 160.0).toFixed(2) + ' m';
+    var wM = formatQuota(slamSpanMeters(geo.bounds.maxX - geo.bounds.minX + 1, 'x'));
+    var hM = formatQuota(slamSpanMeters(geo.bounds.maxY - geo.bounds.minY + 1, 'y'));
     drawCadTickLineTheme(ctx, Math.max(26, bx1), 26, Math.min(w - 26, bx2), 26, wM, false, dark);
     drawCadTickLineTheme(ctx, 26, Math.max(26, by1), 26, Math.min(h - 26, by2), hM, true, dark);
     [['①', bx1, 18], ['②', bx2, 18], ['Ⓐ', 18, by1], ['Ⓑ', 18, by2]].forEach(function(a) {
@@ -77,7 +106,7 @@ function renderCadBlueprint(ctx, w, h) {
   }
 
   // 4. Dicitura Locale Protetta da Sovrapposizioni (Posizionata in zona libera)
-  var freeM2 = (slamMap.stats.freeCells * 0.0039).toFixed(2);
+  var freeM2 = slamAreaM2(slamMap.stats.freeCells).toFixed(2);
   var badgeX = w * 0.38, badgeY = h * 0.65;
   ctx.fillStyle = dark ? 'rgba(5,12,26,0.92)' : '#ffffff'; ctx.strokeStyle = dark ? '#00f0ff' : '#64748b'; ctx.lineWidth = 1;
   ctx.fillRect(badgeX - 60, badgeY - 14, 120, 30); ctx.strokeRect(badgeX - 60, badgeY - 14, 120, 30);

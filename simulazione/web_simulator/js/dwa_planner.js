@@ -16,11 +16,12 @@ var DWA = {
   footprintMargin: 1.15,  // stesso margine della dilatazione del pianificatore A*
   speedSamples: 5,
   steerSamples: 11,    // dispari: include sempre "dritto"
-  maxSpeed: 2.0,
-  minSpeed: -1.0,
-  maxSteer: 0.14,      // rad/frame
-  accSpeed: 0.35,      // variazione massima di velocita' per tick
-  accSteer: 0.06,      // variazione massima di sterzo per tick
+  maxSpeed: 120,       // px/s
+  minSpeed: -60,       // px/s (solo manovra di emergenza)
+  maxSteer: 8.4,       // rad/s
+  accSpeed: 1260,      // px/s^2
+  accSteer: 216,       // rad/s^2
+  minSpeedFloor: 12,   // px/s: evita divisioni per zero nell'orizzonte
   clearanceCap: 90,    // px oltre i quali "piu' spazio" non aggiunge punteggio
   wHeading: 2.2,       // allineamento al goal
   wClearance: 1.8,     // margine dagli ostacoli
@@ -28,21 +29,23 @@ var DWA = {
 };
 
 /** Passi necessari a coprire l'orizzonte, limitati anche nella rotazione totale. */
-function dwaStepsFor(v, w) {
-  var passo = Math.max(Math.abs(v), 0.2);
+function dwaStepsFor(v, w, dt) {
+  if (dt === undefined) dt = SIM_DT;
+  var passo = Math.max(Math.abs(v), DWA.minSpeedFloor) * dt;      // px percorsi per passo
   var perDistanza = DWA.lookaheadPx / passo;
-  var perRotazione = (!w) ? Infinity : DWA.maxTurnRad / Math.abs(w);
+  var perRotazione = (!w) ? Infinity : DWA.maxTurnRad / (Math.abs(w) * dt);
   return Math.max(DWA.minSteps, Math.min(DWA.maxSteps, Math.round(Math.min(perDistanza, perRotazione))));
 }
 
 /** Traiettoria prodotta mantenendo (v, w) costanti, stessa cinematica del simulatore. */
-function dwaSimulate(v, w, steps) {
+function dwaSimulate(v, w, steps, dt) {
+  if (dt === undefined) dt = SIM_DT;
   var x = robotState.x, y = robotState.y, a = robotState.angle;
   var traj = [];
   for (var i = 0; i < steps; i++) {
-    a += w;
-    x += Math.cos(a) * v;
-    y += Math.sin(a) * v;
+    a += w * dt;
+    x += Math.cos(a) * v * dt;
+    y += Math.sin(a) * v * dt;
     traj.push({ x: x, y: y, a: a });
   }
   return traj;
@@ -80,12 +83,15 @@ function dwaEscape() {
  * Comando (velocita', sterzo) per raggiungere goalAngle evitando gli ostacoli.
  * @param {number} goalAngle rotta desiderata in radianti (assoluta)
  */
-function planDwaCommand(goalAngle) {
+function planDwaCommand(goalAngle, dt) {
+  if (dt === undefined) dt = SIM_DT;
   var obstacles = dwaObstaclePoints();
-  var vLo = Math.max(DWA.minSpeed, robotState.speed - DWA.accSpeed);
-  var vHi = Math.min(DWA.maxSpeed, robotState.speed + DWA.accSpeed);
-  var wLo = Math.max(-DWA.maxSteer, robotState.steering - DWA.accSteer);
-  var wHi = Math.min(DWA.maxSteer, robotState.steering + DWA.accSteer);
+  // Finestra dinamica: quanto velocita' e sterzo possono cambiare in un passo.
+  var dv = DWA.accSpeed * dt, dw = DWA.accSteer * dt;
+  var vLo = Math.max(DWA.minSpeed, robotState.speed - dv);
+  var vHi = Math.min(DWA.maxSpeed, robotState.speed + dv);
+  var wLo = Math.max(-DWA.maxSteer, robotState.steering - dw);
+  var wHi = Math.min(DWA.maxSteer, robotState.steering + dw);
 
   var best = null;
   for (var iv = 0; iv < DWA.speedSamples; iv++) {
@@ -93,7 +99,7 @@ function planDwaCommand(goalAngle) {
     if (v <= 0) continue;              // la retromarcia e' solo manovra di emergenza
     for (var iw = 0; iw < DWA.steerSamples; iw++) {
       var w = wLo + (wHi - wLo) * (DWA.steerSamples === 1 ? 0 : iw / (DWA.steerSamples - 1));
-      var traj = dwaSimulate(v, w, dwaStepsFor(v, w));
+      var traj = dwaSimulate(v, w, dwaStepsFor(v, w, dt), dt);
       var clear = dwaClearance(traj, obstacles);
       var raggioSicuro = CAR_RADIUS_PX * DWA.footprintMargin;
       if (clear < raggioSicuro) continue;    // il corpo del robot non ci passa

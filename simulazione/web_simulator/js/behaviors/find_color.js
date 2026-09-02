@@ -25,8 +25,8 @@ function runFindColorBehavior() {
   while (bodyAngleDiff > Math.PI) bodyAngleDiff -= Math.PI * 2;
 
   if (dist > 70) {
-    robotState.steering = bodyAngleDiff * 0.08;
-    robotState.speed = Math.min(1.8, (dist - 65) * 0.025); // avanzamento graduale verso il target
+    robotState.steering = bodyAngleDiff * 4.8;
+    robotState.speed = Math.min(108, (dist - 65) * 1.5); // avanzamento graduale verso il target
   } else {
     robotState.speed = 0; // Target raggiunto in sicurezza
     robotState.steering = 0;

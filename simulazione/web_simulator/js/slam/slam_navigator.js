@@ -4,7 +4,7 @@
 // L'A* fornisce il percorso globale; il DWA decide istante per istante il
 // comando (velocita', sterzo) che avvicina al waypoint restando percorribile.
 
-function navigateSlamPath() {
+function navigateSlamPath(dt) {
   var percorsoValido = slamMap.currentPath.length > 0 &&
                        slamMap.pathIndex < slamMap.currentPath.length - 1;
   if (!percorsoValido) {
@@ -21,7 +21,7 @@ function navigateSlamPath() {
   var dist = Math.hypot(ddx, ddy);
 
   // Il DWA sceglie il comando simulando le traiettorie raggiungibili.
-  var cmd = planDwaCommand(Math.atan2(ddy, ddx));
+  var cmd = planDwaCommand(Math.atan2(ddy, ddx), dt);
   robotState.speed = cmd.speed;
   robotState.steering = cmd.steering;
 

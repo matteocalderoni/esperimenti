@@ -13,8 +13,8 @@ function runTrackLightBehavior() {
   while (diffAngle > Math.PI) diffAngle -= Math.PI * 2;
 
   if (distToLight > 60) {
-    robotState.steering = diffAngle * 0.08;
-    robotState.speed = Math.min(2.0, distToLight * 0.02);
+    robotState.steering = diffAngle * 4.8;
+    robotState.speed = Math.min(120, distToLight * 1.2);
   } else {
     robotState.speed = 0; // Sorgente luminosa raggiunta
     robotState.steering = 0;

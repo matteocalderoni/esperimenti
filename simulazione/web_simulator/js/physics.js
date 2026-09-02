@@ -1,9 +1,11 @@
 // simulazione/web_simulator/js/physics.js
 // Orchestratore Principale della Fisica e delle Automazioni
 
-function updatePhysics() {
+function updatePhysics(dt) {
+  if (dt === undefined) dt = SIM_DT;
+
   // 1. Aggiornamento cinematica 4WD e collisione solida muri
-  updateKinematics();
+  updateKinematics(dt);
 
   // 2. Calcolo ultrasuoni (Multi-Ray Bumper Proximity Array) e sensori IR
   updateSensors();
@@ -31,8 +33,8 @@ function executeJSBehaviors() {
 
   // 1. Manovra di disimpegno solo in caso di urto fisico effettivo con pareti (attivato da kinematics.js)
   if (robotState.collisionCooldown > 0) {
-    robotState.speed = -0.8;
-    robotState.steering = 0.05 * robotState.recoverySteeringDir;
+    robotState.speed = -48;
+    robotState.steering = 3 * robotState.recoverySteeringDir;
     return;
   }
 
@@ -61,7 +63,7 @@ function updateTelemetryUI() {
   const panEl = document.getElementById('telePan');
   const distEl = document.getElementById('teleDist');
 
-  if (speedEl) speedEl.innerText = `${Math.round(robotState.speed * 25)} %`;
+  if (speedEl) speedEl.innerText = `${Math.round(robotState.speed / robotState.maxSpeed * 100)} %`;
   if (headingEl) headingEl.innerText = `${Math.round((robotState.angle * 180 / Math.PI) % 360)}°`;
   if (panEl) panEl.innerText = `${Math.round(robotState.panAngle)}°`;
   if (distEl) distEl.innerText = `${(robotState.ultrasonicDist * 100).toFixed(1)} cm`;

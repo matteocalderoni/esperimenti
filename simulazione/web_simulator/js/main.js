@@ -61,8 +61,19 @@ function resizeCanvas() {
   }
 }
 
-function gameLoop() {
-  updatePhysics();
+let ultimoTimestamp = null;
+
+function gameLoop(timestamp) {
+  // Passo temporale reale: il moto dipende dal tempo trascorso, non dal frame
+  // rate. Il tetto SIM_MAX_DT evita un salto enorme quando la scheda del
+  // browser e' rimasta in secondo piano e requestAnimationFrame si e' fermato.
+  let dt = SIM_DT;
+  if (ultimoTimestamp !== null && timestamp !== undefined) {
+    dt = Math.min(SIM_MAX_DT, Math.max(0, (timestamp - ultimoTimestamp) / 1000));
+  }
+  if (timestamp !== undefined) ultimoTimestamp = timestamp;
+
+  updatePhysics(dt);
   drawArena();
   if (typeof drawOccupancyMap === 'function') {
     drawOccupancyMap();

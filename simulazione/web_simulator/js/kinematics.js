@@ -1,23 +1,25 @@
 // simulazione/web_simulator/js/kinematics.js
 // Gestione della Cinematica 4WD e Collisioni Fisiche Rigide
 
-function updateKinematics() {
-  // Gestione cooldown collisione
+function updateKinematics(dt) {
+  if (dt === undefined) dt = SIM_DT;
+
+  // Gestione cooldown collisione (in secondi)
   if (robotState.collisionCooldown > 0) {
-    robotState.collisionCooldown--;
+    robotState.collisionCooldown = Math.max(0, robotState.collisionCooldown - dt);
   }
 
   // 1. Integrazione posizione veicolo (Moto Cartesiano 2D)
-  robotState.angle += robotState.steering;
-  robotState.x += Math.cos(robotState.angle) * robotState.speed;
-  robotState.y += Math.sin(robotState.angle) * robotState.speed;
+  robotState.angle += robotState.steering * dt;
+  robotState.x += Math.cos(robotState.angle) * robotState.speed * dt;
+  robotState.y += Math.sin(robotState.angle) * robotState.speed * dt;
 
   // 2. Limiti perimetrali dell'Arena
   const margin = 35;
-  if (robotState.x < margin) { robotState.x = margin; robotState.speed = -0.5; robotState.angle += 0.1; }
-  if (robotState.x > arenaCanvas.width - margin) { robotState.x = arenaCanvas.width - margin; robotState.speed = -0.5; robotState.angle += 0.1; }
-  if (robotState.y < margin) { robotState.y = margin; robotState.speed = -0.5; robotState.angle += 0.1; }
-  if (robotState.y > arenaCanvas.height - margin) { robotState.y = arenaCanvas.height - margin; robotState.speed = -0.5; robotState.angle += 0.1; }
+  if (robotState.x < margin) { robotState.x = margin; robotState.speed = -30; robotState.angle += 6 * dt; }
+  if (robotState.x > arenaCanvas.width - margin) { robotState.x = arenaCanvas.width - margin; robotState.speed = -30; robotState.angle += 6 * dt; }
+  if (robotState.y < margin) { robotState.y = margin; robotState.speed = -30; robotState.angle += 6 * dt; }
+  if (robotState.y > arenaCanvas.height - margin) { robotState.y = arenaCanvas.height - margin; robotState.speed = -30; robotState.angle += 6 * dt; }
 
   // 3. Collisione solida e spinta fuori dai muri (Hard Wall Push-Out)
   const carR = CAR_RADIUS_PX;
@@ -65,8 +67,8 @@ function updateKinematics() {
       const dot = hx * px + hy * py;
       robotState.recoverySpeedSign = (dot > 0) ? 1 : -1;
 
-      robotState.collisionCooldown = 50; // Avvia la manovra di recupero (50 frame)
-      if (robotState.speed > 0) robotState.speed = -0.4;
+      robotState.collisionCooldown = 0.85; // Avvia la manovra di recupero (secondi)
+      if (robotState.speed > 0) robotState.speed = -24;
     }
   }
 }

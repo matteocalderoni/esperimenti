@@ -16,7 +16,7 @@ function checkAndHandleObstacles(options = {}) {
   // 1. Tracciamento linea: qui non si aggira, ci si ferma e si aspetta.
   if (mode === 'trackLine') {
     if (robotState.frontDist < stopThresh) {
-      robotState.speed += (0 - robotState.speed) * 0.4;
+      robotState.speed += (0 - robotState.speed) * Math.min(1, 24 * SIM_DT);
       robotState.steering = 0;
       robotState.ledColor = (Math.floor(Date.now() / 250) % 2 === 0) ? '#ff0000' : '#ffbe0b';
       return true;
@@ -28,7 +28,7 @@ function checkAndHandleObstacles(options = {}) {
   if (robotState.frontDist >= dInfluence) return false;
 
   // 3. Fronte chiuso: il DWA sceglie il comando mantenendo la rotta corrente.
-  const cmd = planDwaCommand(robotState.angle);
+  const cmd = planDwaCommand(robotState.angle, options.dt);
   robotState.speed = cmd.speed;
   robotState.steering = cmd.steering;
   robotState.ledColor = (cmd.speed <= 0) ? '#ff0055' : '#ffbe0b';

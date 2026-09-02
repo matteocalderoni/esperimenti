@@ -57,9 +57,9 @@ function applyLocalCommand(cmd) {
   if (cmd === 'forward') robotState.speed = robotState.maxSpeed;
   else if (cmd === 'backward') robotState.speed = -robotState.maxSpeed * 0.7;
   else if (cmd === 'DS') robotState.speed = 0;
-  else if (cmd === 'left') robotState.steering = -0.05;
-  else if (cmd === 'right') robotState.steering = 0.05;
-  else if (cmd === 'rotate-left') { robotState.speed = 0; robotState.angle -= 0.12; }
+  else if (cmd === 'left') robotState.steering = -3;
+  else if (cmd === 'right') robotState.steering = 3;
+  else if (cmd === 'rotate-left') { robotState.speed = 0; robotState.angle -= 0.12; }   // scatto discreto, non una velocita'
   else if (cmd === 'rotate-right') { robotState.speed = 0; robotState.angle += 0.12; }
   else if (cmd === 'TS') robotState.steering = 0;
   else if (cmd === 'lookleft') robotState.panAngle = Math.min(80, robotState.panAngle + 10);

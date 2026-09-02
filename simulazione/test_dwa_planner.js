@@ -25,7 +25,7 @@ function setup(muri, statoRobot = {}) {
   muri.forEach((m) => sim.arenaObjects.walls.push(m));
   sim.arenaObjects.lineTrack.length = 0;
   Object.assign(sim.robotState,
-    { x: 223, y: 219, angle: 0, panAngle: 0, speed: 1.0, steering: 0 }, statoRobot);
+    { x: 223, y: 219, angle: 0, panAngle: 0, speed: 60, steering: 0 }, statoRobot);
   sim.updateSensors();
   return sim;
 }
@@ -39,7 +39,7 @@ function test_procede_dritto_quando_e_libero() {
 
   assert.ok(cmd.speed > vPrima,
     `Con l'ambiente libero deve accelerare (da ${vPrima} a ${cmd.speed.toFixed(2)})`);
-  assert.ok(Math.abs(cmd.steering) < 0.03,
+  assert.ok(Math.abs(cmd.steering) < 1.8,
     `Con il goal dritto davanti lo sterzo deve restare quasi nullo, invece e' ${cmd.steering.toFixed(3)}`);
   console.log(`   ✅ velocita' ${vPrima} -> ${cmd.speed.toFixed(2)}, sterzo ${cmd.steering.toFixed(3)}.`);
 }
@@ -92,15 +92,15 @@ function test_disimpegno_quando_tutto_e_bloccato() {
 
 function test_rispetta_il_limite_di_accelerazione() {
   console.log('\n🔍 Test 5: il comando non deve saltare oltre il limite di accelerazione...');
-  const sim = setup([], { speed: 0.2, steering: 0 });
+  const sim = setup([], { speed: 12, steering: 0 });
 
   const cmd = sim.planDwaCommand(sim.robotState.angle);
 
-  assert.ok(cmd.speed - 0.2 <= 0.36,
-    `La velocita' non puo' passare da 0.2 a ${cmd.speed.toFixed(2)} in un tick`);
-  assert.ok(Math.abs(cmd.steering - 0) <= 0.07,
-    `Lo sterzo non puo' passare da 0 a ${cmd.steering.toFixed(3)} in un tick`);
-  console.log(`   ✅ Variazioni entro i limiti: Δv ${(cmd.speed - 0.2).toFixed(2)}, Δsterzo ${cmd.steering.toFixed(3)}.`);
+  assert.ok(cmd.speed - 12 <= 21.5,
+    `La velocita' non puo' passare da 12 a ${cmd.speed.toFixed(1)} px/s in un tick`);
+  assert.ok(Math.abs(cmd.steering - 0) <= 3.7,
+    `Lo sterzo non puo' passare da 0 a ${cmd.steering.toFixed(2)} rad/s in un tick`);
+  console.log(`   ✅ Variazioni entro i limiti: Δv ${(cmd.speed - 12).toFixed(1)} px/s, Δsterzo ${cmd.steering.toFixed(2)} rad/s.`);
 }
 
 if (require.main === module) {
