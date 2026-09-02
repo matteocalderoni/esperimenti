@@ -52,7 +52,7 @@ function updateSensors() {
     else if (relDeg > 20) { ox = frX; oy = frY; }
 
     const dist = castRayFrom(ox, oy, absAngle);
-    probes.push({ relRad, relDeg, dist });
+    probes.push({ relRad, relDeg, dist, ox, oy });   // origine: serve al DWA per posizionare l'ostacolo
 
     if (relDeg < -FRONT_CONE_DEG) minLeft = Math.min(minLeft, dist);
     else if (relDeg > FRONT_CONE_DEG) minRight = Math.min(minRight, dist);

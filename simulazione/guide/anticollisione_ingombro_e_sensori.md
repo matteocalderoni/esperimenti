@@ -104,3 +104,75 @@ senza modificare i file di produzione.
   `ROTATE_180` è irraggiungibile), `stuckFrames`, `stuckEscaping`, `targetHeading`.
 - Lo stesso difetto di dilatazione esiste lato Python: `core/occupancy_grid.py`
   usa `radius_cells=2` slegato dall'ingombro.
+
+---
+
+# Intervento 3: Dynamic Window Approach
+
+Data: 2026-09-02 — sostituzione del livello reattivo.
+
+## Cosa c'era
+
+`obstacle_guard.js` era una cascata di soglie su tre scalari: sotto 65 cm curva,
+sotto 18 cm retromarcia. Non simulava nulla, quindi si accorgeva dell'ostacolo
+solo quando era già addosso, e le nove sonde di prossimità calcolate a ogni frame
+non le leggeva nessuno.
+
+## Cosa c'è ora
+
+Nuovo modulo `web_simulator/js/dwa_planner.js` (campionamento e punteggio) e
+`dwa_obstacles.js` (nuvola di punti dalle sonde). A ogni tick campiona le coppie
+(velocità, sterzo) raggiungibili nel prossimo frame — la *dynamic window*, limitata
+dall'accelerazione — ne simula la traiettoria con la stessa cinematica del
+simulatore e sceglie la migliore secondo:
+
+```
+punteggio = 2,2·allineamento_al_goal + 1,8·margine_dagli_ostacoli + 0,7·velocità
+```
+
+Una candidata è ammissibile solo se supera due criteri:
+
+1. **ingombro**: la traiettoria resta a più di `CAR_RADIUS_PX × 1,15` (25,3 px) dagli
+   ostacoli — lo stesso margine usato dalla dilatazione dell'A\*;
+2. **frenata**: `v ≤ sqrt(2 · accSpeed · spazio_libero)`, cioè la velocità deve
+   permettere di fermarsi entro lo spazio residuo. È il criterio canonico del DWA
+   ed è ciò che impedisce di "strisciare" contro un muro a bassa velocità.
+
+Se nessuna candidata in avanti è ammissibile scatta `dwaEscape()`: retromarcia
+verso il lato più libero, unica manovra autorizzata a violare il limite di
+accelerazione perché è una frenata di emergenza.
+
+Gli ostacoli vengono ricostruiti dalle sonde **interpolando fra sonde adiacenti**:
+nove punti isolati lasciavano varchi in cui una traiettoria stretta si infilava pur
+attraversando un muro continuo.
+
+Consumatori: `slam_navigator.js` (insegue il waypoint A\* chiedendo il comando al
+DWA) e `obstacle_guard.js`, che si riduce al solo contratto verso `physics.js`
+— "via libera? guida il comportamento; fronte chiuso? decide il DWA" — più
+l'eccezione dello stop&wait del tracciamento linea.
+
+## Risultati misurati
+
+800 tick di esplorazione dall'avvio, stessa strumentazione dei precedenti:
+
+| metrica | prima dell'intervento 1 | dopo 1+2 | dopo 1+2+3 |
+|---|---|---|---|
+| collisioni fisiche | 1 / 175 tick | 0 / 1275 tick | **0 / 800 tick** |
+| tick a contatto (<14 cm) | frequenti | 0 | **0** |
+| manovre di disimpegno | — | — | **1,3% dei tick di navigazione** |
+| copertura raggiunta | ~71%, in stallo | 85% | **86%** |
+| tick per concludere | mai concluso | ~1275 | **~800** |
+
+## Limiti noti
+
+- **Le unità cinematiche restano incoerenti** (punto 4, non affrontato): la velocità
+  è in px/frame e lo sterzo in rad/frame, mai dimensionati fra loro. A `v=1,35` e
+  `maxSteer=0,14` il raggio di sterzata è 9,6 px, meno della metà del raggio del
+  robot: il robot ruota su sé stesso più in fretta di quanto avanzi di una propria
+  lunghezza. Il DWA ci convive limitando la rotazione simulata (`maxTurnRad`), ma
+  la taratura di `lookaheadPx` e `maxTurnRad` resta empirica finché non si
+  introduce `dt` con unità fisiche.
+- Con un waypoint irraggiungibile perché coperto da un ostacolo il DWA entra in un
+  **ciclo limite**: scansa, il goal lo richiama, riscansa. Non è pericoloso (zero
+  urti in 80 tick di prova) e il rilevamento di stallo a 40 tick forza comunque un
+  nuovo piano, ma è il motivo per cui il DWA da solo non basta: serve l'A\* sopra.

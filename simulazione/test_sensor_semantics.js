@@ -15,8 +15,8 @@ const MURO_DAVANTI = { x: 270, y: 190, w: 50, h: 60 };
 
 function setup(muri, pan = 0) {
   const sim = loadSim(
-    ['state.js', 'sensors.js', 'slam/slam_grid.js', 'slam/slam_navigator.js'],
-    ['robotState', 'arenaObjects', 'updateSensors', 'slamMap', 'navigateSlamPath'],
+    ['state.js', 'sensors.js', 'dwa_obstacles.js', 'dwa_planner.js', 'kinematics.js', 'slam/slam_grid.js', 'slam/slam_navigator.js'],
+    ['robotState', 'arenaObjects', 'updateSensors', 'slamMap', 'navigateSlamPath', 'updateKinematics'],
     { arenaCanvas: fakeCanvas(CANVAS_W, CANVAS_H) }
   );
   sim.arenaObjects.walls.length = 0;
@@ -54,19 +54,31 @@ function test_ostacolo_costeggiato_non_ferma_il_robot() {
   console.log(`   ✅ Fronte libero: velocita' mantenuta a ${speed.toFixed(2)}.`);
 }
 
-function test_ostacolo_frontale_fa_frenare() {
-  console.log('\n🔍 Test 2: un ostacolo davvero davanti deve far frenare...');
+function test_ostacolo_frontale_non_viene_investito() {
+  console.log('\n🔍 Test 2: con un ostacolo davanti il robot non deve andarci addosso...');
   const sim = setup([MURO_DAVANTI]);
 
   assert.ok(sim.robotState.frontDist < 0.22,
     `Precondizione: il muro deve essere davanti (frontDist=${sim.robotState.frontDist.toFixed(2)} m)`);
 
-  const speed = inseguiPercorsoDritto(sim);
+  // Il waypoint e' dritto oltre il muro: la strategia (frenare o scansare) e'
+  // libera, l'invariante e' che il robot non tocchi l'ostacolo.
+  sim.slamMap.currentPath = [{ gx: 35, gy: 26 }, { gx: 59, gy: 26 }];
+  sim.slamMap.pathIndex = 0;
+  const rottaIniziale = sim.robotState.angle;
+  let collisioni = 0;
+  for (let i = 0; i < 80; i++) {
+    sim.updateSensors();
+    sim.navigateSlamPath();
+    const prima = sim.robotState.collisionCooldown;
+    sim.updateKinematics();
+    if (sim.robotState.collisionCooldown > prima) collisioni++;
+  }
 
-  assert.ok(speed <= 0.25,
-    `Con un ostacolo a ${sim.robotState.frontDist.toFixed(2)} m il robot deve rallentare, ` +
-    `invece la velocita' e' ${speed.toFixed(2)}`);
-  console.log(`   ✅ Ostacolo frontale: velocita' ridotta a ${speed.toFixed(2)}.`);
+  assert.strictEqual(collisioni, 0, `Il robot ha urtato l'ostacolo ${collisioni} volte in 80 tick`);
+  assert.ok(Math.abs(sim.robotState.angle - rottaIniziale) > 0.2,
+    'Il robot deve reagire all\'ostacolo, invece ha mantenuto la rotta iniziale');
+  console.log(`   ✅ 80 tick senza urti, rotta deviata di ${(sim.robotState.angle - rottaIniziale).toFixed(2)} rad.`);
 }
 
 function test_ultrasuoni_seguono_la_testa_pan_tilt() {
@@ -91,7 +103,7 @@ if (require.main === module) {
   console.log('='.repeat(60));
   const tutti = [
     test_ostacolo_costeggiato_non_ferma_il_robot,
-    test_ostacolo_frontale_fa_frenare,
+    test_ostacolo_frontale_non_viene_investito,
     test_ultrasuoni_seguono_la_testa_pan_tilt,
   ];
   const continua = process.argv.includes('--tutti');

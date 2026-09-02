@@ -41,7 +41,7 @@ function executeJSBehaviors() {
     let guardOptions = {};
     if (mode === 'findColor') guardOptions = { dInfluence: 0.40, stopThreshold: 0.20 };
     else if (mode === 'trackLight') guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
-    else if (mode === 'automatic') guardOptions = { dInfluence: 0.65, dangerThresh: 0.18 };
+    else if (mode === 'automatic') guardOptions = { dInfluence: 0.65 };
 
     if (typeof checkAndHandleObstacles === 'function' && checkAndHandleObstacles(guardOptions)) {
       return;
