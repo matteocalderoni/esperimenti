@@ -4,3 +4,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Ambiente virtuale Python (locale, legato alla macchina)
+venv/
+.venv/
