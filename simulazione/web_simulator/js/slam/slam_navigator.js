@@ -12,7 +12,7 @@ function navigateSlamPath() {
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
 
-    var minD = robotState.ultrasonicDist || 1.0;
+    var minD = robotState.frontDist || 1.0;   // frenata sul cono frontale, non sui fianchi
 
     // 1. Rallentamento di Sicurezza e Sterzata Morbida se Ostacolo Vicino (< 22cm)
     if (minD < 0.22) {

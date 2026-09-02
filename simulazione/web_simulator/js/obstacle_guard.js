@@ -11,7 +11,7 @@ function checkAndHandleObstacles(options = {}) {
 
   // 1. Eccezione Tracciamento Linea (Stop & Wait a 30cm)
   if (mode === 'trackLine') {
-    if (robotState.ultrasonicDist < stopThresh) {
+    if (robotState.frontDist < stopThresh) {
       robotState.speed += (0 - robotState.speed) * 0.4;
       robotState.steering = 0;
       robotState.ledColor = (Math.floor(Date.now() / 250) % 2 === 0) ? '#ff0000' : '#ffbe0b';
@@ -20,7 +20,7 @@ function checkAndHandleObstacles(options = {}) {
     return false;
   }
 
-  const minD   = robotState.ultrasonicDist;
+  const minD   = robotState.frontDist;   // frenata sul cono frontale, non sui fianchi
   const leftD  = robotState.leftDist !== undefined ? robotState.leftDist : minD;
   const rightD = robotState.rightDist !== undefined ? robotState.rightDist : minD;
   const pan    = robotState.panAngle || 0;

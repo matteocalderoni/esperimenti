@@ -20,7 +20,7 @@ function updateKinematics() {
   if (robotState.y > arenaCanvas.height - margin) { robotState.y = arenaCanvas.height - margin; robotState.speed = -0.5; robotState.angle += 0.1; }
 
   // 3. Collisione solida e spinta fuori dai muri (Hard Wall Push-Out)
-  const carR = 22;
+  const carR = CAR_RADIUS_PX;
   for (const w of arenaObjects.walls) {
     if (robotState.x + carR > w.x && robotState.x - carR < w.x + w.w &&
         robotState.y + carR > w.y && robotState.y - carR < w.y + w.h) {

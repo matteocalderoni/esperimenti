@@ -1,0 +1,106 @@
+# Anticollisione: ingombro del robot nel pianificatore e semantica dei sensori
+
+Data: 2026-09-02 — Interventi 1 e 2 dell'analisi sull'evitamento ostacoli.
+
+## Il problema
+
+Il robot in modalità esplorazione passava l'**85,1% dei tick di navigazione in
+frenata d'emergenza** (`frontDist < 0,22 m`) e restava sostanzialmente incastrato
+contro i mobili: la copertura della mappa si fermava intorno al 71% e avanzava di
+un punto percentuale ogni 25 secondi.
+
+La causa non era la taratura delle soglie, ma il fatto che **l'A\* pianificava
+percorsi che il robot fisicamente non poteva percorrere**.
+
+### Perché
+
+La dilatazione degli ostacoli era espressa in *celle di griglia*:
+
+```
+canvas          446 × 438 px   (dipende dalla finestra del browser)
+griglia SLAM    70 × 52 celle
+→ cella         6,37 × 8,42 px  ← non quadrata
+raggio robot    22 px = 3,45 celle in orizzontale
+dilatazione r=2 12,7 px         ← 58% del raggio del robot
+```
+
+Il pianificatore trattava il robot come un **punto adimensionale**. Misura sui
+percorsi realmente prodotti: 11 waypoint su 23 passavano a meno di 22 px dai muri,
+uno con distanza 0 (dentro il muro). In più `planAdaptiveSlamAStar`, quando non
+trovava un percorso, *abbassava la sicurezza* provando r=1 e poi r=0 anziché
+scartare l'obiettivo.
+
+Secondo problema, indipendente: `ultrasonicDist` era il minimo su tutte e nove le
+sonde di prossimità (±75°), e su quel singolo valore si decideva la frenata. Il
+robot non distingueva **"ostacolo davanti"** da **"ostacolo che sto costeggiando"**.
+
+## Cosa è cambiato
+
+### 1. Dilatazione ancorata all'ingombro fisico
+
+Nuovo modulo `web_simulator/js/slam/slam_inflation.js`:
+
+- `CAR_RADIUS_PX` (22 px) è ora una costante condivisa in `state.js`, usata sia da
+  `kinematics.js` per la collisione sia dal pianificatore. Unica fonte di verità.
+- `getSafeDilationCells()` converte il raggio del telaio (più un margine del 10%)
+  in celle **separatamente per asse**, perché le celle non sono quadrate.
+  Alle dimensioni attuali: `{rx: 4, ry: 3}`.
+- `getDilatedSlamGrid(rx, ry)` è anisotropa; senza argomenti usa il raggio sicuro.
+- `planAdaptiveSlamAStar()` fa **un solo tentativo**, al raggio sicuro. Se non
+  esiste un percorso percorribile restituisce `[]` e il chiamante prova la
+  frontiera successiva: si scarta l'obiettivo, mai il margine di sicurezza.
+
+### 2. Semantica dei sensori separata
+
+In `sensors.js` le tre distanze hanno ora significati distinti e non collassano
+più in un minimo unico:
+
+| valore | significato | chi lo usa |
+|---|---|---|
+| `frontDist` | minimo del cono frontale (±20°) | decide la **frenata** |
+| `leftDist` / `rightDist` | settori laterali (oltre ±20°) | decidono **da che parte scansare** |
+| `ultrasonicDist` | il singolo HC-SR04 sulla testa pan-tilt | telemetria, `keepDistance`, disegno del fascio |
+
+Consumatori aggiornati a `frontDist`: `slam_navigator.js`, `obstacle_guard.js`
+(incluso lo stop del tracciamento linea) e l'indicatore LED in `physics.js`.
+
+## Risultati misurati
+
+Stessa strumentazione prima e dopo, modalità esplorazione dall'avvio:
+
+| metrica | prima | dopo |
+|---|---|---|
+| tick in frenata d'emergenza (su NAVIGATE) | 85,1 % | **0 %** |
+| collisioni fisiche | 1 su 175 tick | **0 su 1275 tick** |
+| copertura mappa | ~71 %, in stallo | **85 %, esplorazione conclusa** |
+
+## Test
+
+```bash
+node simulazione/test_planner_safety.js --tutti
+node simulazione/test_sensor_semantics.js --tutti
+```
+
+I moduli del simulatore sono script "browser globals": `simulazione/sim_test_harness.js`
+li concatena ed esegue in un contesto `vm` di Node, senza dipendenze esterne e
+senza modificare i file di produzione.
+
+## Note e lavoro residuo
+
+- L'esplorazione ora **termina** al 85% invece di proseguire all'infinito: il
+  restante 15% è spazio che il robot, con il suo ingombro reale, non può
+  raggiungere. Il modale di fine rilievo ha però il titolo "99%" cablato mentre
+  mostra la percentuale reale nel badge: incoerenza cosmetica preesistente,
+  diventata visibile ora che la procedura arriva davvero in fondo.
+- Restano aperti i punti 3 e 4 dell'analisi: sostituire la guardia a soglie di
+  `obstacle_guard.js` con un Dynamic Window Approach (le nove sonde in
+  `robotState.proximityProbes` sono calcolate a ogni frame e oggi **non le legge
+  nessuno**), e introdurre `dt` nell'integrazione di `kinematics.js`, oggi
+  espressa in px/frame e rad/frame.
+- Codice morto individuato durante l'analisi e **non** toccato da questo
+  intervento: `recoverySpeedSign` (calcolato in `kinematics.js`, mai letto: la
+  manovra di recupero retrocede sempre anche quando la via di fuga è in avanti),
+  `rayDistances` (letto da `isClearForRotation()` ma mai scritto, quindi lo stato
+  `ROTATE_180` è irraggiungibile), `stuckFrames`, `stuckEscaping`, `targetHeading`.
+- Lo stesso difetto di dilatazione esiste lato Python: `core/occupancy_grid.py`
+  usa `radius_cells=2` slegato dall'ingombro.

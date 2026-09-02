@@ -17,7 +17,7 @@ function updatePhysics() {
   if (robotState.policeActive || robotState.activeMode === 'police') {
     robotState.policeState = (robotState.policeState + 1) % 12;
     robotState.ledColor = (robotState.policeState < 6) ? '#ff0055' : '#00f0ff';
-  } else if (robotState.ultrasonicDist >= 0.70) {
+  } else if (robotState.frontDist >= 0.70) {
     robotState.ledColor = '#00f5d4';
   }
 

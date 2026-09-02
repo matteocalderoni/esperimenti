@@ -1,5 +1,12 @@
 // simulazione/web_simulator/js/sensors.js
-// Emulazione dei Sensori (Array Bumper Ultrasuoni per APF ed Infrarossi IR)
+// Emulazione dei Sensori (Array di Prossimita' + Ultrasuoni su testa + Infrarossi IR)
+//
+// Le tre distanze hanno significati distinti e NON vanno collassate in un minimo
+// unico: frontDist decide se frenare, leftDist/rightDist decidono da che parte
+// scansare, ultrasonicDist e' il singolo HC-SR04 montato sulla testa pan-tilt.
+
+// Semiapertura del cono considerato "frontale" (gradi).
+const FRONT_CONE_DEG = 20;
 
 function updateSensors() {
   const cosA = Math.cos(robotState.angle);
@@ -47,19 +54,19 @@ function updateSensors() {
     const dist = castRayFrom(ox, oy, absAngle);
     probes.push({ relRad, relDeg, dist });
 
-    if (relDeg < -10) minLeft = Math.min(minLeft, dist);
-    else if (relDeg > 10) minRight = Math.min(minRight, dist);
+    if (relDeg < -FRONT_CONE_DEG) minLeft = Math.min(minLeft, dist);
+    else if (relDeg > FRONT_CONE_DEG) minRight = Math.min(minRight, dist);
     else minFront = Math.min(minFront, dist);
   }
 
+  // Ultrasuoni reale: un solo sensore, punta dove punta la testa pan-tilt.
   const panDist = castRayFrom(fcX, fcY, headAngle);
-  minFront = Math.min(minFront, panDist);
 
   robotState.proximityProbes = probes;
   robotState.leftDist = minLeft;
   robotState.rightDist = minRight;
-  robotState.frontDist = minFront;
-  robotState.ultrasonicDist = Math.max(0.05, Math.min(minFront, minLeft, minRight));
+  robotState.frontDist = Math.max(0.05, minFront);
+  robotState.ultrasonicDist = Math.max(0.05, panDist);
 
   updateIRSensors();
 }

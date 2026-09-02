@@ -1,5 +1,9 @@
 // simulazione/web_simulator/js/state.js
 
+// Ingombro fisico del telaio: raggio di collisione in pixel.
+// Unica fonte di verita' per cinematica, pianificatore e sensori.
+const CAR_RADIUS_PX = 22;
+
 // Stato del Robot Simulato
 const robotState = {
   // Posizione e Fisica Veicolo

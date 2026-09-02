@@ -92,7 +92,7 @@ function runExplorationBehavior() {
         if (path.length > 1) { slamMap.targetFrontier = ranked[fi]; break; }
       }
     } else if (slamMap.stats.exploredPct < 99 && typeof findHunterTarget === 'function') {
-      var hunter = findHunterTarget(cur, getDilatedSlamGrid(2));
+      var hunter = findHunterTarget(cur, getDilatedSlamGrid());
       if (hunter) path = planAdaptiveSlamAStar(cur, hunter);
     }
 

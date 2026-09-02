@@ -1,23 +1,6 @@
 // simulazione/web_simulator/js/slam/slam_planner.js
-// Algoritmi di Dilatazione Adattiva, Rilevamento Frontiere/Hunter e Pathfinding A*
-
-function getDilatedSlamGrid(radius) {
-  if (!radius) radius = 2;
-  var dGrid = slamMap.grid.map(function(row) { return row.slice(); });
-  for (var y = 0; y < slamMap.height; y++) {
-    for (var x = 0; x < slamMap.width; x++) {
-      if (slamMap.grid[y][x] === 1) {
-        for (var dy = -radius; dy <= radius; dy++) {
-          for (var dx = -radius; dx <= radius; dx++) {
-            var ny = y + dy, nx = x + dx;
-            if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width) dGrid[ny][nx] = 1;
-          }
-        }
-      }
-    }
-  }
-  return dGrid;
-}
+// Rilevamento Frontiere/Hunter e Pathfinding A*
+// (la dilatazione degli ostacoli vive in slam_inflation.js)
 
 function findSlamFrontiers() {
   var isFrontier = [], visited = [], centroids = [];
@@ -123,11 +106,9 @@ function planSlamAStar(start, goal, dGrid) {
 }
 
 function planAdaptiveSlamAStar(start, goal) {
-  var rads = [2, 1, 0];
-  for (var i = 0; i < rads.length; i++) {
-    var dg = getDilatedSlamGrid(rads[i]);
-    var p = planSlamAStar(start, goal, dg);
-    if (p && p.length > 1) return p;
-  }
-  return [];
+  // Un solo tentativo, al raggio che copre l'ingombro reale del robot.
+  // Se non esiste un percorso sicuro si scarta l'obiettivo (il chiamante
+  // prova la frontiera successiva), MAI il margine di sicurezza.
+  var p = planSlamAStar(start, goal, getDilatedSlamGrid());
+  return (p && p.length > 1) ? p : [];
 }
