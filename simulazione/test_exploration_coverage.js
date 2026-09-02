@@ -9,8 +9,16 @@ const { loadSimFromIndex, groundTruthMapQuality } = require('./sim_test_harness'
 const TICKS = 20000;
 // Riferimento: risultato della versione a soglie prima del rifacimento
 // dell'anticollisione. Il nuovo pianificatore non deve mappare di meno.
-const COPERTURA_MINIMA = 88;
-const RICHIAMO_MURI_MINIMO = 48;
+// Soglie abbassate da 88/48 a 87/46 quando il DWA ha acquisito un raggio di
+// sterzata minimo realistico (40 px): la versione precedente arrivava a 88/48
+// ruotando attorno a un punto interno al proprio corpo, cioe' con una guida che
+// il robot vero non puo' riprodurre. Il punto percentuale perso e' il prezzo
+// dichiarato di quel vincolo fisico.
+const COPERTURA_MINIMA = 87;
+const RICHIAMO_MURI_MINIMO = 46;
+// Il rilievo deve concludersi: con le pose di osservazione una rotta si trova
+// quasi sempre, e senza un criterio di progresso l'esplorazione non finirebbe.
+const TICK_MASSIMI_PER_CONCLUDERE = 8000;
 
 function esploraFinoInFondo() {
   const sim = loadSimFromIndex();
@@ -39,6 +47,10 @@ function test_la_mappa_finale_non_regredisce() {
     'l\'esplorazione si ferma lasciando spazio raggiungibile inesplorato');
   assert.ok(q.richiamoMuri >= RICHIAMO_MURI_MINIMO,
     `Richiamo muri ${q.richiamoMuri}%, sotto il minimo di ${RICHIAMO_MURI_MINIMO}%`);
+  assert.ok(tickCompletato !== null && tickCompletato <= TICK_MASSIMI_PER_CONCLUDERE,
+    tickCompletato === null
+      ? `Il rilievo non si e' mai concluso in ${TICKS} tick: continua a girare senza aggiungere nulla`
+      : `Rilievo concluso solo al tick ${tickCompletato}, oltre il limite di ${TICK_MASSIMI_PER_CONCLUDERE}`);
   console.log('   ✅ Mappa finale entro i riferimenti.');
 }
 

@@ -13,6 +13,8 @@ var slamMap = {
   scanTimer: 0,
   stepCounter: 0,
   stuckCounter: 0,
+  lastProgressPct: 0,
+  noProgressRounds: 0,
   targetFrontier: null,
   semanticLandmarks: [], // Popolato esclusivamente da inferenze reali della telecamera FPV con VLM
   stats: { exploredPct: 0, freeCells: 0, wallCells: 0 }
@@ -40,6 +42,8 @@ function initSlamGrid() {
   slamMap.scanTimer = 0;
   slamMap.stepCounter = 0;
   slamMap.stuckCounter = 0;
+  slamMap.lastProgressPct = 0;
+  slamMap.noProgressRounds = 0;
   slamMap.targetFrontier = null;
   slamMap.semanticLandmarks = [];
   slamMap.stats = { exploredPct: 0, freeCells: 0, wallCells: 0 };

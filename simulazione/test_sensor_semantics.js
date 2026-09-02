@@ -15,7 +15,7 @@ const MURO_DAVANTI = { x: 270, y: 190, w: 50, h: 60 };
 
 function setup(muri, pan = 0) {
   const sim = loadSim(
-    ['state.js', 'sensors.js', 'dwa_obstacles.js', 'dwa_planner.js', 'kinematics.js', 'slam/slam_grid.js', 'slam/slam_navigator.js'],
+    ['state.js', 'sensors.js', 'dwa_obstacles.js', 'dwa_motion.js', 'dwa_planner.js', 'kinematics.js', 'slam/slam_grid.js', 'slam/slam_navigator.js'],
     ['robotState', 'arenaObjects', 'updateSensors', 'slamMap', 'navigateSlamPath', 'updateKinematics'],
     { arenaCanvas: fakeCanvas(CANVAS_W, CANVAS_H) }
   );
@@ -66,19 +66,25 @@ function test_ostacolo_frontale_non_viene_investito() {
   sim.slamMap.currentPath = [{ gx: 35, gy: 26 }, { gx: 59, gy: 26 }];
   sim.slamMap.pathIndex = 0;
   const rottaIniziale = sim.robotState.angle;
-  let collisioni = 0;
+  const velocitaIniziale = sim.robotState.speed;
+  let collisioni = 0, velocitaMinima = velocitaIniziale;
   for (let i = 0; i < 80; i++) {
     sim.updateSensors();
     sim.navigateSlamPath();
     const prima = sim.robotState.collisionCooldown;
     sim.updateKinematics();
     if (sim.robotState.collisionCooldown > prima) collisioni++;
+    velocitaMinima = Math.min(velocitaMinima, sim.robotState.speed);
   }
 
   assert.strictEqual(collisioni, 0, `Il robot ha urtato l'ostacolo ${collisioni} volte in 80 tick`);
-  assert.ok(Math.abs(sim.robotState.angle - rottaIniziale) > 0.2,
-    'Il robot deve reagire all\'ostacolo, invece ha mantenuto la rotta iniziale');
-  console.log(`   ✅ 80 tick senza urti, rotta deviata di ${(sim.robotState.angle - rottaIniziale).toFixed(2)} rad.`);
+  // Reagire puo' voler dire frenare oppure deviare: entrambe sono risposte
+  // valide, quello che non deve fare e' proseguire indisturbato.
+  const haDeviato = Math.abs(sim.robotState.angle - rottaIniziale) > 0.2;
+  const haFrenato = velocitaMinima < velocitaIniziale / 2;
+  assert.ok(haDeviato || haFrenato,
+    `Il robot non ha reagito: rotta invariata e velocita' mai scesa sotto ${velocitaMinima.toFixed(0)} px/s`);
+  console.log(`   ✅ 80 tick senza urti, ${haFrenato ? 'frenata fino a ' + velocitaMinima.toFixed(0) + ' px/s' : 'deviazione di ' + (sim.robotState.angle - rottaIniziale).toFixed(2) + ' rad'}.`);
 }
 
 function test_ultrasuoni_seguono_la_testa_pan_tilt() {

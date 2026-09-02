@@ -1,7 +1,6 @@
 // simulazione/test_dwa_planner.js
-// Test: il Dynamic Window Approach deve scegliere il comando (velocita', sterzo)
-// simulando le traiettorie candidate PRIMA di impegnarsi, invece di reagire a
-// soglie quando l'ostacolo e' gia' addosso.
+// Il DWA sceglie il comando simulando le traiettorie candidate PRIMA di
+// impegnarsi. Qualita' della guida: test_dwa_guida.js.
 
 const assert = require('assert');
 const { loadSim, fakeCanvas } = require('./sim_test_harness');
@@ -9,6 +8,8 @@ const { loadSim, fakeCanvas } = require('./sim_test_harness');
 const CANVAS_W = 446, CANVAS_H = 438;
 // Muro davanti e in alto: lascia libero solo il settore in basso (sterzo positivo).
 const MURO_AVANTI_E_SOPRA = { x: 270, y: 110, w: 60, h: 120 };
+// Ostacolo lontano abbastanza da poter essere superato in marcia.
+const MURO_LONTANO = { x: 380, y: 100, w: 40, h: 130 };
 const ACCERCHIAMENTO = [
   { x: 255, y: 190, w: 60, h: 60 },
   { x: 150, y: 150, w: 120, h: 40 },
@@ -17,8 +18,8 @@ const ACCERCHIAMENTO = [
 
 function setup(muri, statoRobot = {}) {
   const sim = loadSim(
-    ['state.js', 'sensors.js', 'dwa_obstacles.js', 'dwa_planner.js'],
-    ['robotState', 'arenaObjects', 'updateSensors', 'planDwaCommand', 'dwaSimulate', 'dwaClearance', 'dwaObstaclePoints', 'dwaStepsFor'],
+    ['state.js', 'sensors.js', 'kinematics.js', 'dwa_obstacles.js', 'dwa_motion.js', 'dwa_planner.js'],
+    ['robotState', 'arenaObjects', 'updateSensors', 'planDwaCommand', 'dwaArc', 'dwaClearance', 'dwaObstaclePoints', 'DWA', 'updateKinematics'],
     { arenaCanvas: fakeCanvas(CANVAS_W, CANVAS_H) }
   );
   sim.arenaObjects.walls.length = 0;
@@ -45,30 +46,45 @@ function test_procede_dritto_quando_e_libero() {
 }
 
 function test_aggira_dal_lato_libero() {
-  console.log('\n🔍 Test 2: con un ostacolo davanti deve virare verso il settore libero...');
-  const sim = setup([MURO_AVANTI_E_SOPRA]);
+  console.log('\n🔍 Test 2: deve raggiungere il goal sul lato libero costeggiando l\'ostacolo...');
+  // Il DWA insegue una rotta desiderata evitando gli ostacoli; scegliere DOVE
+  // andare spetta all'A*. Qui il goal punta al settore libero, come farebbe un
+  // waypoint del percorso globale, e si guida davvero per piu' tick.
+  const sim = setup([MURO_AVANTI_E_SOPRA], { speed: 60 });
+  const yPartenza = sim.robotState.y;
+  const dt = 1 / 60;
+  let collisioni = 0;
 
-  assert.ok(sim.robotState.frontDist < 0.25, 'Precondizione: ostacolo davanti');
-  // I tre scalari left/right qui coincidono: e' l'array di sonde a distinguere
-  // il lato libero, ed e' esattamente il dato che il DWA sfrutta.
-  const sonda = (deg) => sim.robotState.proximityProbes.find((p) => p.relDeg === deg).dist;
-  assert.ok(sonda(50) > sonda(-50) * 2,
-    `Precondizione: il settore a sterzo positivo deve essere piu' libero ` +
-    `(+50°: ${sonda(50).toFixed(2)} m contro -50°: ${sonda(-50).toFixed(2)} m)`);
+  // Si guida finche' l'ostacolo non e' superato: oltre, con un goal fisso e
+  // senza il recupero collisioni di physics.js, il robot finirebbe in un angolo
+  // dell'arena e si misurerebbe quello, non l'aggiramento.
+  const oltreLOstacolo = () => sim.robotState.y > MURO_AVANTI_E_SOPRA.y + MURO_AVANTI_E_SOPRA.h;
+  let superato = false;
+  for (let i = 0; i < 240 && !superato; i++) {
+    sim.updateSensors();
+    const cmd = sim.planDwaCommand(Math.PI / 4, dt);   // goal: in basso a destra, il lato libero
+    sim.robotState.speed = cmd.speed;
+    sim.robotState.steering = cmd.steering;
+    const prima = sim.robotState.collisionCooldown;
+    sim.updateKinematics(dt);
+    if (sim.robotState.collisionCooldown > prima) collisioni++;
+    superato = oltreLOstacolo();
+  }
+  assert.ok(superato, 'Il robot deve riuscire a portarsi oltre l\'ostacolo entro 4 secondi');
 
-  const cmd = sim.planDwaCommand(sim.robotState.angle);
-
-  assert.ok(cmd.steering > 0,
-    `Deve virare verso il lato libero (sterzo positivo), invece sterza ${cmd.steering.toFixed(3)}`);
-  console.log(`   ✅ Vira dal lato libero: sterzo ${cmd.steering.toFixed(3)}, velocita' ${cmd.speed.toFixed(2)}.`);
+  assert.strictEqual(collisioni, 0, `Ha urtato l'ostacolo ${collisioni} volte`);
+  console.log(`   ✅ Ostacolo superato senza urti, scostamento ${(sim.robotState.y - yPartenza).toFixed(0)} px ` +
+    'verso il lato libero.');
 }
 
 function test_la_traiettoria_scelta_e_libera() {
   console.log('\n🔍 Test 3: la traiettoria scelta non deve passare sull\'ostacolo...');
-  const sim = setup([MURO_AVANTI_E_SOPRA]);
+  const sim = setup([MURO_LONTANO]);
 
   const cmd = sim.planDwaCommand(sim.robotState.angle);
-  const traiettoria = sim.dwaSimulate(cmd.speed, cmd.steering, sim.dwaStepsFor(cmd.speed, cmd.steering));
+  assert.ok(cmd.speed > 0, 'Precondizione: a questa distanza la marcia avanti deve essere ammessa');
+  const kappa = cmd.speed !== 0 ? cmd.steering / cmd.speed : 0;
+  const traiettoria = sim.dwaArc(kappa, sim.DWA.lookaheadPx);
   const distanzaMinima = sim.dwaClearance(traiettoria, sim.dwaObstaclePoints());
 
   assert.ok(distanzaMinima >= 22 * 1.15,
@@ -83,11 +99,22 @@ function test_disimpegno_quando_tutto_e_bloccato() {
 
   assert.ok(sim.robotState.frontDist < 0.15, 'Precondizione: robot accerchiato');
 
-  const cmd = sim.planDwaCommand(sim.robotState.angle);
+  // La frenata rispetta una decelerazione finita: si verifica che porti
+  // effettivamente all'arresto, non che azzeri la velocita' in un tick solo.
+  const dt = 1 / 60;
+  let cmd = null;
+  for (let i = 0; i < 60; i++) {
+    sim.updateSensors();
+    cmd = sim.planDwaCommand(sim.robotState.angle, dt);
+    sim.robotState.speed = cmd.speed;
+    sim.robotState.steering = cmd.steering;
+    if (cmd.speed <= 5) break;
+  }
 
-  assert.ok(cmd.speed <= 0,
-    `Accerchiato deve arretrare o fermarsi, invece avanza a ${cmd.speed.toFixed(2)}`);
-  console.log(`   ✅ Manovra di disimpegno: velocita' ${cmd.speed.toFixed(2)}, sterzo ${cmd.steering.toFixed(3)}.`);
+  // 5 px/s sono 3 cm/s: il robot e' fermo a tutti gli effetti pratici.
+  assert.ok(cmd.speed <= 5,
+    `Accerchiato deve arrestarsi entro un secondo, invece avanza ancora a ${cmd.speed.toFixed(1)} px/s`);
+  console.log(`   ✅ Disimpegno: velocita' ${cmd.speed.toFixed(1)} px/s, sterzo ${cmd.steering.toFixed(2)} rad/s.`);
 }
 
 function test_rispetta_il_limite_di_accelerazione() {

@@ -76,45 +76,15 @@ function runExplorationBehavior() {
     if (typeof navigateSlamPath === 'function') navigateSlamPath();
   }
 
-  // 5. FIND_FRONTIERS: Selezione obiettivo e pathfinding A* con buffer adattivo
+  // 5. FIND_FRONTIERS: scelta dell'obiettivo (logica in slam/slam_target.js)
   else if (slamMap.fsmState === 'FIND_FRONTIERS') {
     robotState.speed = 0; robotState.steering = 0; robotState.panAngle = 0;
     var cur = slamWorldToGrid(robotState.x, robotState.y);
-    var frontiers = findSlamFrontiers();
-    slamMap.frontiers = frontiers;
+    slamMap.frontiers = findSlamFrontiers();
 
-    var path = [];
-    if (frontiers.length > 0) {
-      var ranked = (typeof rankFrontiersByBlindness === 'function') ? rankFrontiersByBlindness(cur, frontiers) : frontiers;
-      // Con la dilatazione ancorata all'ingombro le frontiere meglio classificate
-      // sono spesso quelle addossate ai mobili, quindi irraggiungibili: fermarsi
-      // alle prime dieci faceva dichiarare COMPLETE con spazio ancora esplorabile.
-      var limit = Math.min(30, ranked.length);
-      for (var fi = 0; fi < limit; fi++) {
-        path = planAdaptiveSlamAStar(cur, ranked[fi]);
-        if (path.length > 1) { slamMap.targetFrontier = ranked[fi]; break; }
-      }
+    if (slamNoProgress()) { slamMap.fsmState = 'COMPLETE'; return; }
 
-      // Nessuna frontiera raggiungibile: non serve arrivarci sopra, basta
-      // vederla. Si punta alla posa di osservazione piu' vicina.
-      if (path.length <= 1 && typeof findObservationPose === 'function') {
-        var dGrid = getDilatedSlamGrid();
-        var quante = Math.min(12, ranked.length);
-        for (var oi = 0; oi < quante; oi++) {
-          var posa = findObservationPose(cur, ranked[oi], dGrid);
-          if (!posa) continue;
-          path = planAdaptiveSlamAStar(cur, posa);
-          if (path.length > 1) { slamMap.targetFrontier = ranked[oi]; break; }
-        }
-      }
-    }
-    // Ripiego sulla cella ignota piu' vicina anche quando esistono frontiere ma
-    // nessuna di esse e' raggiungibile in sicurezza.
-    if (path.length <= 1 && slamMap.stats.exploredPct < 99 && typeof findHunterTarget === 'function') {
-      var hunter = findHunterTarget(cur, getDilatedSlamGrid());
-      if (hunter) path = planAdaptiveSlamAStar(cur, hunter);
-    }
-
+    var path = planSlamExplorationPath(cur);
     if (path.length > 1) {
       slamMap.currentPath = path; slamMap.pathIndex = 0;
       slamMap.stepCounter = 0; slamMap.stuckCounter = 0;

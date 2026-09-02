@@ -265,3 +265,73 @@ chiusura. L'harness headless esclude di proposito i moduli che richiedono il DOM
 quindi `websocket.js`, `controls.js` e i renderer **non sono coperti dai test**:
 dopo una modifica a quei file va controllata la console del browser, oppure
 `node --check <file>` per la sola sintassi.
+
+---
+
+# Intervento 5: la guida era diventata strana
+
+Data: 2026-09-02.
+
+Segnalazione: "la macchina gira su se stessa e guida in modo strano, cambi di
+velocità improvvisi e non finisce mai di mappare". Le metriche usate fin qui
+(tortuosità *media*, collisioni) non lo vedevano: la media nasconde le rotazioni
+sul posto, e lo strappo di velocità non era mai stato misurato.
+
+## Misure che mostrano il problema
+
+| | prima dell'intervento | dopo |
+|---|---|---|
+| sterzo massimo | 8,4 rad/s = **481°/s** | 2,4 rad/s = **138°/s** |
+| raggio di sterzata mediano | **15,1 px** (minimo 2,9) | **60 px** |
+| tempo a ruotare più stretto del proprio ingombro | 12,7% | 5% |
+| rotazione sul posto | — | 2–3% |
+| strappo medio di velocità | 67 px/s² | 62 px/s² |
+| tick per concludere il rilievo | 4850, poi **mai** | ~1750 (29 s) |
+
+## Le tre cause
+
+**1. Il punto 4 era stato applicato fedelmente, e questo era il difetto.**
+Convertire `0,14 rad/frame × 60 = 8,4 rad/s` ha conservato il rapporto assurdo
+già identificato nell'analisi: a 120 px/s il raggio di sterzata era 14 px, meno
+del raggio del robot (22 px). Rendere fisiche le unità ha reso *visibile* il
+numero, non l'ha corretto. Ora la velocità angolare è legata a quella lineare da
+un **raggio di sterzata minimo** (`minTurnRadiusPx`, 40 px): in marcia l'arco è
+sempre più largo dell'ingombro. La rotazione sul posto resta possibile solo da
+fermo, dove è legittima per un telaio differenziale.
+
+**2. L'orizzonte era a passi temporali, quindi il robot era cieco quando andava
+piano.** A 2 px/s la traiettoria simulata era lunga 3 px: non vedeva nulla,
+strisciava in avanti e non riaccelerava mai. Ora la traiettoria si valuta come
+**arco parametrizzato dalla curvatura** k = w/v e percorso per una lunghezza
+fissa: la geometria non dipende più dalla velocità, che entra solo nel criterio
+di frenata — come vuole il metodo.
+
+**3. Il rilievo non finiva più.** Le pose di osservazione dell'intervento 4
+fanno sì che una rotta si trovi quasi sempre, quindi l'esaurimento delle
+frontiere non basta più a fermarsi. Aggiunto un **criterio di progresso**: se la
+copertura non cresce per 14 cicli di pianificazione, il rilievo si chiude.
+
+Corretti inoltre due accoppiamenti emersi dalle misure: dopo una rotazione sul
+posto lo sterzo restava a 1,2 rad/s e **nessuna** velocità di marcia risultava
+ammissibile (il robot ripivotava all'infinito) — la finestra di sterzo ora è
+intersecata con il raggio minimo e il punteggio di tesatura premia lo sterzo
+tenue, che riporta le ruote dritte; e la manovra di disimpegno ora frena, poi si
+riorienta ruotando sul posto, poi arretra, invece di passare di colpo a
+retromarcia piena.
+
+`dwa_planner.js` è stato diviso: `dwa_motion.js` tiene i vincoli di moto e la
+geometria degli archi, `dwa_planner.js` la sola scelta del comando.
+
+## Prezzo dichiarato
+
+Le soglie del test di copertura scendono da 88%/48% a **87%/46%**. Il punto
+percentuale perso è il costo del vincolo fisico: la versione che arrivava a 88%
+ruotava attorno a un punto interno al proprio corpo, cioè guidava in un modo che
+il robot vero non può riprodurre.
+
+## Nota di metodo
+
+Questo intervento è nato da un'osservazione a occhio che tre cicli di metriche
+non avevano colto. Le metriche aggregate (media, totale) vanno affiancate da
+quelle che descrivono la *forma* del moto: raggio di sterzata, percentuale di
+tempo in rotazione, strappo di velocità.
