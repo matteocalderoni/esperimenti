@@ -70,6 +70,7 @@
               <span class="card-title-icon">📡</span> Piantina Rilevata (SLAM Live 2D)
             </div>
             <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn-ctrl" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-pink); color:var(--accent-pink);" onclick="openVlmGalleryModal()">📸 Foto VLM (<span id="vlmPhotoCount">0</span>)</button>
               <button id="btnThemeToggleMap" class="btn-ctrl" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-amber); color:var(--accent-amber);" onclick="toggleCadTheme()">🎨 Tema</button>
               <button class="btn-ctrl" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-cyan); color:var(--accent-cyan);" onclick="openBlueprintModal()">🔍 Ingrandisci</button>
               <button id="btnCadToggle" class="btn-ctrl active" style="padding:3px 8px; font-size:11px; margin:0; border-color:var(--accent-green); color:var(--accent-green);" onclick="toggleCadDimensions()">📐 Quote CAD</button>
@@ -191,6 +192,7 @@
         L'ambiente è stato completamente rilevato con successo (superata la soglia del <strong>99%</strong>). Il robot ha arrestato la navigazione autonoma ed ha generato la pianta tecnica quotata.
       </p>
       <button class="modal-btn" style="background:rgba(0,240,255,0.2); border:1px solid var(--accent-cyan); color:var(--accent-cyan); margin-bottom:8px;" onclick="openBlueprintModal()">📐 Visualizza Piantina Geometra HD</button>
+      <button class="modal-btn" style="background:rgba(255,190,11,0.2); border:1px solid var(--accent-amber); color:var(--accent-amber); margin-bottom:8px;" onclick="openVlmGalleryModal()">📸 Ispeziona Foto VLM Inviate</button>
       <button class="modal-btn" onclick="closeCompletionModal()">Perfetto, Chiudi</button>
     </div>
   </div>
@@ -214,6 +216,20 @@
       <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
         <div>Scala metrica 1:50 • Rilievo automatico SLAM 2D Occupancy Grid</div>
         <div style="color:var(--accent-cyan); font-weight:bold;">Proporzioni Reali: 4.38m x 3.25m</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Galleria Fotografica Scatti VLM (Visualizzatore Scatti Reali inviati all'LLM) -->
+  <div id="vlmGalleryModal" class="modal-overlay">
+    <div class="blueprint-modal-card" style="max-width:850px;">
+      <div class="blueprint-header">
+        <div style="font-size:16px; font-weight:700; color:#ffbe0b; display:flex; align-items:center; gap:8px;">
+          <span>📸</span> Galleria Scatti VLM & Risposte dell'LLM Moondream
+        </div>
+        <button class="modal-btn" style="padding:6px 14px; font-size:12px; background:#334155; color:#fff; box-shadow:none;" onclick="closeVlmGalleryModal()">✕ Chiudi</button>
+      </div>
+      <div id="vlmGalleryGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px; max-height:480px; overflow-y:auto; padding:8px;">
       </div>
     </div>
   </div>

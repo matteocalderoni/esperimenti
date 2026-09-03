@@ -1,11 +1,6 @@
 // simulazione/web_simulator/js/slam/slam_target.js
-// Selezione dell'Obiettivo di Esplorazione
-//
-// Sceglie dove andare: frontiera raggiungibile, altrimenti posa di osservazione
-// che la inquadri, altrimenti cella ignota piu' vicina. Decide anche quando il
-// rilievo e' concluso, con un criterio di progresso della copertura.
+// Selezione dell'Obiettivo di Esplorazione & Ispezione Ravvicinata VLM
 
-/** Aggiorna il criterio di progresso; true se non c'e' piu' nulla da rilevare. */
 function slamNoProgress() {
   if (slamMap.stats.exploredPct > (slamMap.lastProgressPct || 0)) {
     slamMap.lastProgressPct = slamMap.stats.exploredPct;
@@ -17,8 +12,42 @@ function slamNoProgress() {
   return false;
 }
 
-/** Percorso verso il prossimo obiettivo di esplorazione; [] se non ce n'e'. */
+function findUnrecognizedObstacleTarget(cur) {
+  if (!slamMap || !slamMap.grid) return null;
+  var W = getArenaW(), H = getArenaH();
+  var landmarks = slamMap.semanticLandmarks || [];
+  
+  for (var gy = 4; gy < slamMap.height - 4; gy += 3) {
+    for (var gx = 4; gx < slamMap.width - 4; gx += 3) {
+      if (slamMap.grid[gy][gx] === 1) {
+        var worldX = (gx / slamMap.width) * W, worldY = (gy / slamMap.height) * H;
+        var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55; });
+        if (!isRecognized) {
+          // Trova una cella libera vicina per scattare da vicino
+          var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
+          if (dGrid[gy][gx-3] === 0) return { x: gx - 3, y: gy };
+          if (dGrid[gy][gx+3] === 0) return { x: gx + 3, y: gy };
+          if (dGrid[gy-3] && dGrid[gy-3][gx] === 0) return { x: gx, y: gy - 3 };
+          if (dGrid[gy+3] && dGrid[gy+3][gx] === 0) return { x: gx, y: gy + 3 };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 function planSlamExplorationPath(cur) {
+  // 1. Ispezione Proattiva Ravvicinata di Ostacoli Non Ancora Riconosciuti
+  var unrecTarget = findUnrecognizedObstacleTarget(cur);
+  if (unrecTarget) {
+    var unrecPath = planAdaptiveSlamAStar(cur, unrecTarget);
+    if (unrecPath && unrecPath.length > 1) {
+      slamMap.targetFrontier = unrecTarget;
+      return unrecPath;
+    }
+  }
+
+  // 2. Percorso Boustrophedon di Copertura
   if (typeof generateBoustrophedonPath === 'function' && !slamMap.boustrophedonDone) {
     var bPath = generateBoustrophedonPath(3);
     if (bPath && bPath.length > 2) {
@@ -30,6 +59,7 @@ function planSlamExplorationPath(cur) {
     }
   }
 
+  // 3. Ranking Frontiere per Information Gain
   var ranked = (typeof rankFrontiersByBlindness === 'function')
     ? rankFrontiersByBlindness(cur, slamMap.frontiers) : slamMap.frontiers;
   var path = [];
@@ -39,7 +69,6 @@ function planSlamExplorationPath(cur) {
     if (path.length > 1) { slamMap.targetFrontier = ranked[fi]; return path; }
   }
 
-  // Nessuna frontiera raggiungibile: non serve arrivarci sopra, basta vederla.
   if (typeof findObservationPose === 'function') {
     var dGrid = getDilatedSlamGrid();
     for (var oi = 0; oi < Math.min(12, ranked.length); oi++) {
