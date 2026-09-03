@@ -84,8 +84,8 @@ class FrontierPlanner:
         candidates.sort(key=lambda c: c[1])
         return candidates[0][0]
 
-    def plan_path(self, start, goal, dilated_grid):
-        """Calcola la traiettoria ottima con l'algoritmo A* sulla griglia con ostacoli dilatati."""
+    def plan_path(self, start, goal, dilated_grid, costmap=None):
+        """Calcola la traiettoria ottima con l'algoritmo A* sulla griglia con ostacoli dilatati e gradiente di costo."""
         height, width = dilated_grid.shape
         sx, sy, gx, gy = start[0], start[1], goal[0], goal[1]
         if not (0 <= sx < width and 0 <= sy < height and 0 <= gx < width and 0 <= gy < height) or dilated_grid[gy, gx] == 1:
@@ -107,7 +107,8 @@ class FrontierPlanner:
             for dx, dy, cost in [(1,0,1), (-1,0,1), (0,1,1), (0,-1,1), (1,1,1.414), (-1,1,1.414), (1,-1,1.414), (-1,-1,1.414)]:
                 nx, ny = cx + dx, cy + dy
                 if 0 <= nx < width and 0 <= ny < height and dilated_grid[ny, nx] != 1:
-                    tentative_g = g_score[current] + cost
+                    c_penalty = (costmap[ny, nx] * 0.01) if costmap is not None else 0.0
+                    tentative_g = g_score[current] + cost + c_penalty
                     if (nx, ny) not in g_score or tentative_g < g_score[(nx, ny)]:
                         came_from[(nx, ny)] = current
                         g_score[(nx, ny)] = tentative_g

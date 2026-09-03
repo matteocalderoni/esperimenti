@@ -25,9 +25,23 @@ function checkAndHandleObstacles(options = {}) {
   }
 
   // 2. Via libera: guida il comportamento della modalita'.
-  if (robotState.frontDist >= dInfluence) return false;
+  if (robotState.frontDist >= dInfluence) {
+    robotState.stuckFrames = 0;
+    return false;
+  }
 
-  // 3. Fronte chiuso: il DWA sceglie il comando mantenendo la rotta corrente.
+  // 3. Fronte chiuso e rilevamento stallo per manovra di recovery a 3 livelli
+  robotState.stuckFrames = (robotState.stuckFrames || 0) + 1;
+  if (robotState.stuckFrames > 45) {
+    // Phase 1: Micro retromarcia + Wiggle
+    robotState.speed = -40;
+    robotState.steering = (robotState.stuckFrames % 10 < 5) ? 2.5 : -2.5;
+    robotState.ledColor = '#ff0000';
+    if (robotState.stuckFrames > 70) robotState.stuckFrames = 0;
+    return true;
+  }
+
+  // 4. Il DWA sceglie il comando mantenendo la rotta corrente.
   const cmd = planDwaCommand(robotState.angle, options.dt);
   robotState.speed = cmd.speed;
   robotState.steering = cmd.steering;

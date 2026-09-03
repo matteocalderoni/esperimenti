@@ -75,13 +75,29 @@ class OccupancyGrid:
     def get_dilated_grid(self, radius_cells=2):
         """Dilatazione morfologica degli ostacoli per garantire il buffer di sicurezza al robot."""
         obstacle_mask = (self.grid == 1)
-        # Struttura circolare di dilatazione
         struct = np.ones((radius_cells * 2 + 1, radius_cells * 2 + 1), dtype=bool)
         dilated = binary_dilation(obstacle_mask, structure=struct)
         
         dilated_map = self.grid.copy()
         dilated_map[dilated] = 1
         return dilated_map
+
+    def get_costmap(self, gamma=0.3, max_cost=255.0):
+        """Mappa di costo con decadimento esponenziale attorno agli ostacoli."""
+        costmap = np.zeros((self.height, self.width), dtype=np.float32)
+        obs_y, obs_x = np.where(self.grid == 1)
+        if len(obs_y) == 0:
+            return costmap
+
+        for y in range(self.height):
+            for x in range(self.width):
+                if self.grid[y, x] == 1:
+                    costmap[y, x] = max_cost
+                else:
+                    d_min = np.min(np.hypot(obs_x - x, obs_y - y))
+                    if d_min <= 4.0:
+                        costmap[y, x] = max_cost * math.exp(-gamma * d_min)
+        return costmap
 
     def get_stats(self):
         total = self.width * self.height

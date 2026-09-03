@@ -76,7 +76,7 @@ function rankFrontiersByBlindness(cur, frontiers) {
   return frontiers.sort(function(a, b) { return b.score - a.score; });
 }
 
-function planSlamAStar(start, goal, dGrid) {
+function planSlamAStar(start, goal, dGrid, costmap) {
   var gx = goal.gx, gy = goal.gy, sx = start.gx, sy = start.gy;
   var openSet = [{ x: sx, y: sy, g: 0, f: Math.hypot(gx-sx, gy-sy) }], cameFrom = {}, gScore = {};
   gScore[sx+','+sy] = 0; var iter = 0;
@@ -93,7 +93,8 @@ function planSlamAStar(start, goal, dGrid) {
       var d = dirs[di], nnx = curr.x+d.dx, nny = curr.y+d.dy;
       if (nnx > 0 && nnx < slamMap.width-1 && nny > 0 && nny < slamMap.height-1) {
         if (dGrid[nny][nnx] !== 1 || (curr.x === sx && curr.y === sy && slamMap.grid[nny][nnx] !== 1)) {
-          var tentG = curr.g + d.c, nKey = nnx+','+nny;
+          var cPenalty = (costmap && costmap[nny] && costmap[nny][nnx]) ? costmap[nny][nnx] * 0.01 : 0;
+          var tentG = curr.g + d.c + cPenalty, nKey = nnx+','+nny;
           if (gScore[nKey] === undefined || tentG < gScore[nKey]) {
             cameFrom[nKey] = { x: curr.x, y: curr.y }; gScore[nKey] = tentG;
             openSet.push({ x: nnx, y: nny, g: tentG, f: tentG + Math.hypot(gx-nnx, gy-nny) });
@@ -106,9 +107,7 @@ function planSlamAStar(start, goal, dGrid) {
 }
 
 function planAdaptiveSlamAStar(start, goal) {
-  // Un solo tentativo, al raggio che copre l'ingombro reale del robot.
-  // Se non esiste un percorso sicuro si scarta l'obiettivo (il chiamante
-  // prova la frontiera successiva), MAI il margine di sicurezza.
-  var p = planSlamAStar(start, goal, getDilatedSlamGrid());
+  var cmap = (typeof getSlamCostmap === 'function') ? getSlamCostmap() : null;
+  var p = planSlamAStar(start, goal, getDilatedSlamGrid(), cmap);
   return (p && p.length > 1) ? p : [];
 }

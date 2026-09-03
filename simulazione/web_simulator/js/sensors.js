@@ -11,7 +11,8 @@ const FRONT_CONE_DEG = 20;
 function updateSensors() {
   const cosA = Math.cos(robotState.angle);
   const sinA = Math.sin(robotState.angle);
-  const headAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
+  const lookAheadPanDeg = robotState.panAngle + (robotState.steering ? robotState.steering * 8.0 : 0);
+  const headAngle = robotState.angle + (lookAheadPanDeg * Math.PI / 180);
 
   function castRayFrom(ox, oy, angle, maxDist = 320) {
     const W = arenaCanvas ? arenaCanvas.width : 700;

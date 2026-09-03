@@ -19,6 +19,17 @@ function slamNoProgress() {
 
 /** Percorso verso il prossimo obiettivo di esplorazione; [] se non ce n'e'. */
 function planSlamExplorationPath(cur) {
+  if (typeof generateBoustrophedonPath === 'function' && !slamMap.boustrophedonDone) {
+    var bPath = generateBoustrophedonPath(3);
+    if (bPath && bPath.length > 2) {
+      for (var bi = 0; bi < Math.min(15, bPath.length); bi++) {
+        var bp = planAdaptiveSlamAStar(cur, bPath[bi]);
+        if (bp && bp.length > 1) { slamMap.targetFrontier = bPath[bi]; return bp; }
+      }
+      slamMap.boustrophedonDone = true;
+    }
+  }
+
   var ranked = (typeof rankFrontiersByBlindness === 'function')
     ? rankFrontiersByBlindness(cur, slamMap.frontiers) : slamMap.frontiers;
   var path = [];

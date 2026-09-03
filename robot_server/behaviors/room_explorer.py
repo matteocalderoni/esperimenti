@@ -5,16 +5,18 @@ import Move as move
 from behaviors.base import BaseBehavior
 from core.occupancy_grid import OccupancyGrid
 from core.frontier_planner import FrontierPlanner
+from core.coverage_planner import CoveragePlanner
 from vision.vlm_inspector import VLMInspector
 
 class RoomExplorerBehavior(BaseBehavior):
     """
-    Comportamento di Esplorazione e Mappatura Autonoma 2D (FSM a 5 Stati, Dilatazione 3, Target 99%).
+    Comportamento di Esplorazione Autonoma 2D (FSM Ibrida Boustrophedon/Frontier, Target 99%).
     """
     def __init__(self, context):
         super().__init__(context)
         self.grid = OccupancyGrid()
         self.planner = FrontierPlanner()
+        self.coverage = CoveragePlanner(step_cells=3)
         self.vlm = VLMInspector()
         self.fsm_state = 'INITIAL_SCAN'
         self.current_pose = {'x': 350.0, 'y': 150.0, 'theta': 0.0}
@@ -80,16 +82,25 @@ class RoomExplorerBehavior(BaseBehavior):
 
             gx, gy = self.grid.world_to_grid(self.current_pose['x'], self.current_pose['y'])
             dilated = self.grid.get_dilated_grid(radius_cells=3) # Buffer 3 celle
-            frontiers = self.planner.find_frontiers(self.grid.grid)
+            
+            # Priorità 1: Corsia ad S Boustrophedon
+            b_path_points = self.coverage.generate_boustrophedon_path(self.grid.grid)
             target = None
+            if b_path_points:
+                for bp in b_path_points[:10]:
+                    p = self.planner.plan_path((gx, gy), bp, dilated)
+                    if len(p) > 1:
+                        target = bp
+                        break
 
-            if frontiers:
-                ranked = self.planner.rank_frontiers(frontiers, self.grid.grid, (gx, gy))
-                target = ranked[0]
-                bq = self.planner.get_blind_quadrant(self.grid.grid)
-                print(f"🎯 [FSM: BLIND AREA] Target: cella {target} (Quadrante cieco: {bq['qx']},{bq['qy']})")
-            else:
-                target = self.planner.find_hunter_target(self.grid.grid, dilated, (gx, gy))
+            # Priorità 2: Ranking Frontiere classiche
+            if not target:
+                frontiers = self.planner.find_frontiers(self.grid.grid)
+                if frontiers:
+                    ranked = self.planner.rank_frontiers(frontiers, self.grid.grid, (gx, gy))
+                    target = ranked[0]
+                else:
+                    target = self.planner.find_hunter_target(self.grid.grid, dilated, (gx, gy))
 
             if target:
                 self.current_path = self.planner.plan_path((gx, gy), target, dilated)

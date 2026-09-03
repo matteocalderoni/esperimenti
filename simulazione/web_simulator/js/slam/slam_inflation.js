@@ -54,3 +54,41 @@ function getDilatedSlamGrid(rx, ry) {
   }
   return dGrid;
 }
+
+/**
+ * Genera una mappa di costo sfumata con decadimento esponenziale attorno agli ostacoli.
+ */
+function getSlamCostmap(gamma, maxCost) {
+  if (gamma === undefined) gamma = 0.3;
+  if (maxCost === undefined) maxCost = 255;
+  var costmap = [];
+  var obs = [];
+
+  for (var y = 0; y < slamMap.height; y++) {
+    costmap.push(new Array(slamMap.width).fill(0));
+    for (var x = 0; x < slamMap.width; x++) {
+      if (slamMap.grid[y][x] === 1) obs.push({ x: x, y: y });
+    }
+  }
+
+  if (obs.length === 0) return costmap;
+
+  for (var cy = 0; cy < slamMap.height; cy++) {
+    for (var cx = 0; cx < slamMap.width; cx++) {
+      if (slamMap.grid[cy][cx] === 1) {
+        costmap[cy][cx] = maxCost;
+      } else {
+        var minD = Infinity;
+        for (var oi = 0; oi < Math.min(60, obs.length); oi++) {
+          var d = Math.hypot(obs[oi].x - cx, obs[oi].y - cy);
+          if (d < minD) minD = d;
+        }
+        if (minD <= 4.0) {
+          costmap[cy][cx] = Math.round(maxCost * Math.exp(-gamma * minD));
+        }
+      }
+    }
+  }
+  return costmap;
+}
+
