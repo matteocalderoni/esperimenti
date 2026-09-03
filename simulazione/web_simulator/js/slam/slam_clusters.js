@@ -13,7 +13,7 @@ var SLAM_CLUSTER_MIN_CELLS = 6;
  * Ingombri interni presenti nella mappa, con quote in metri.
  * @returns {Array<{minX,maxX,minY,maxY,celle,larghezzaM,profonditaM}>}
  */
-function findSlamClusters() {
+function findSlamClusters(includePerimeter) {
   if (!slamMap || !slamMap.grid) return [];
   var H = slamMap.height, W = slamMap.width;
   var visto = [];
@@ -47,13 +47,14 @@ function findSlamClusters() {
         }
       }
 
-      // Il perimetro del rilievo e' muratura, non un arredo da quotare.
-      if (tocca || celle < SLAM_CLUSTER_MIN_CELLS) continue;
+      if (celle < SLAM_CLUSTER_MIN_CELLS) continue;
+      if (tocca && !includePerimeter) continue;
 
       blocchi.push({
         minX: minX, maxX: maxX, minY: minY, maxY: maxY, celle: celle,
         larghezzaM: slamSpanMeters(maxX - minX + 1, 'x'),
-        profonditaM: slamSpanMeters(maxY - minY + 1, 'y')
+        profonditaM: slamSpanMeters(maxY - minY + 1, 'y'),
+        tocca: tocca
       });
     }
   }

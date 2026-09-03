@@ -77,9 +77,9 @@ function renderCadBlueprint(ctx, w, h) {
     else if (n.includes('credenza') || n.includes('mobile')) drawCadCabinet(ctx, ox, oy, ow, oh);
   });
 
-  // 2b. Quote sugli ingombri rilevati dalla sola griglia (non richiedono il VLM)
-  if (typeof findSlamClusters === 'function' && (geo.furniture || []).length === 0) {
-    findSlamClusters().forEach(function (b) {
+  // 2b. Quote su tutti gli ingombri ed ostacoli rilevati nella griglia
+  if (typeof findSlamClusters === 'function') {
+    findSlamClusters(true).forEach(function (b) {
       var ox = b.minX * cellW, oy = b.minY * cellH;
       var ow = (b.maxX - b.minX + 1) * cellW, oh = (b.maxY - b.minY + 1) * cellH;
       ctx.strokeStyle = dark ? 'rgba(0,240,255,0.55)' : 'rgba(15,23,42,0.55)';
@@ -91,13 +91,16 @@ function renderCadBlueprint(ctx, w, h) {
     });
   }
 
-  // 3. Quote Esterne a Catena ed Assi Cerchiati
+  // 3. Quote Esterne a Catena ed Assi Cerchiati su Tutti i Lati dell'Arena
   if (geo.bounds) {
-    var bx1 = geo.bounds.minX * cellW, bx2 = (geo.bounds.maxX + 1) * cellW, by1 = geo.bounds.minY * cellH, by2 = (geo.bounds.maxY + 1) * cellH;
+    var bx1 = geo.bounds.minX * cellW, bx2 = (geo.bounds.maxX + 1) * cellW;
+    var by1 = geo.bounds.minY * cellH, by2 = (geo.bounds.maxY + 1) * cellH;
     var wM = formatQuota(slamSpanMeters(geo.bounds.maxX - geo.bounds.minX + 1, 'x'));
     var hM = formatQuota(slamSpanMeters(geo.bounds.maxY - geo.bounds.minY + 1, 'y'));
-    drawCadTickLineTheme(ctx, Math.max(26, bx1), 26, Math.min(w - 26, bx2), 26, wM, false, dark);
-    drawCadTickLineTheme(ctx, 26, Math.max(26, by1), 26, Math.min(h - 26, by2), hM, true, dark);
+    drawCadTickLineTheme(ctx, Math.max(26, bx1), 26, Math.min(w - 26, bx2), 26, 'Larghezza Arena: ' + wM, false, dark);
+    drawCadTickLineTheme(ctx, 26, Math.max(26, by1), 26, Math.min(h - 26, by2), 'Altezza Arena: ' + hM, true, dark);
+    drawCadTickLineTheme(ctx, Math.max(26, bx1), h - 26, Math.min(w - 26, bx2), h - 26, 'Base Inferiore: ' + wM, false, dark);
+    drawCadTickLineTheme(ctx, w - 26, Math.max(26, by1), w - 26, Math.min(h - 26, by2), 'Lato Destro: ' + hM, true, dark);
     [['①', bx1, 18], ['②', bx2, 18], ['Ⓐ', 18, by1], ['Ⓑ', 18, by2]].forEach(function(a) {
       ctx.fillStyle = dark ? '#050c1a' : '#ffffff'; ctx.strokeStyle = dark ? '#00f0ff' : '#0f172a'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(a[1], a[2], 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();

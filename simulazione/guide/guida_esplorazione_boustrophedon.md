@@ -1,6 +1,6 @@
-# Guida Tecnica: Implementazione Esplorazione Boustrophedon e Soft Costmap
+# Guida Tecnica: Implementazione Esplorazione Boustrophedon, Soft Costmap e Quotatura Integrale dell'Arena
 
-Questa guida documenta l'architettura software integrata per potenziare la pulizia, l'esplorazione e l'evitamento degli ostacoli del robot **Adeept 4WD Smart Car** sia in simulazione 2D (JavaScript) sia nel backend nativo Python (`robot_server/`), senza alcuna modifica all'hardware esistente.
+Questa guida documenta l'architettura software integrata per potenziare la pulizia, l'esplorazione, l'evitamento degli ostacoli e la **quotatura geometrica integrale di tutti gli elementi dell'Arena** per il robot **Adeept 4WD Smart Car** sia in simulazione 2D (JavaScript) sia nel backend nativo Python (`robot_server/`), senza alcuna modifica all'hardware esistente.
 
 ---
 
@@ -34,8 +34,21 @@ L'algoritmo $A^*$ e il planner DWA incorporano questa penalità nel costo dei no
 
 ---
 
+### 1.4 Quotatura Metrica Integrale dell'Arena CAD
+* **JavaScript**: `simulazione/web_simulator/js/slam/cad_renderer.js` & `slam_clusters.js`
+
+Estende la misurazione del rilievo ben oltre le sole quote perimetrali rigide:
+1. **Misurazione di Tutti gli Ostacoli ed Arredi Interni**: Tutti i blocchi occupati (sia arredi riconosciuti da VLM sia tramezzi/ostacoli generici rilevati dalla griglia) vengono misurati ed etichettati con la propria dimensione metrica $\text{Larghezza} \times \text{Profondità}$ in metri (`0.85m × 0.40m`).
+2. **Quote a Catena su Tutti e 4 i Lati dell'Arena**:
+   * *Lato Superiore*: Larghezza totale e assi cerchiati ①-②.
+   * *Lato Inferiore*: Quota base inferiore dell'arena.
+   * *Lato Sinistro*: Altezza totale e assi cerchiati Ⓐ-Ⓑ.
+   * *Lato Destro*: Quota altezza lato destro.
+
+---
+
 ## 2. Verifica e Test
 
 I test automatici e le simulazioni confermano il rispetto di tutte le regole della Costituzione:
 - **Tutti i file sono stati mantenuti al di sotto del limite rigido di 150 righe**.
-- Le responsabilità rimangono rigorosamente separate tra moduli di calcolo geometrico (`coverage_planner`), griglia (`occupancy_grid`), FSM comportamenti (`room_explorer`) e simulatore JS.
+- Le responsabilità rimangono rigorosamente separate tra moduli di calcolo geometrico (`coverage_planner`), griglia (`occupancy_grid`), FSM comportamenti (`room_explorer`), quotatura CAD (`cad_renderer`, `slam_clusters`) e simulatore JS.
