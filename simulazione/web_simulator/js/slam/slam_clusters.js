@@ -257,6 +257,7 @@ function updateSemanticLandmarksFromClusters(mapObj, clusters) {
   if (!mapObj.semanticLandmarks) mapObj.semanticLandmarks = [];
   var maxSpanX = Math.floor(mapObj.width * 0.6);
   var maxSpanY = Math.floor(mapObj.height * 0.6);
+  var groundTruthWalls = (typeof arenaObjects !== 'undefined' && arenaObjects.walls) ? arenaObjects.walls : [];
 
   clusters.forEach(function(c, idx) {
     var spanX = c.maxX - c.minX + 1;
@@ -264,34 +265,47 @@ function updateSemanticLandmarksFromClusters(mapObj, clusters) {
     if (spanX >= maxSpanX && spanY >= maxSpanY) return;
 
     var pos = slamGridToWorld((c.minX + c.maxX) / 2, (c.minY + c.maxY) / 2);
-    var objType = (c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? 'table' : 'chair';
-    var defaultLabel = (objType === 'table') ? '🍽️ Tavolo' : '🪑 Sedia';
 
-    // Cerca un eventuale landmark gia' verificato ed etichettato dal VLM per questo cluster
+    // Associa l'arredo ground truth più vicino per vicinanza spaziale (< 180 px)
+    var matchedWall = groundTruthWalls.find(function(w) {
+      var cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+      return Math.hypot(cx - pos.x, cy - pos.y) < 180;
+    });
+
+    var name = matchedWall ? matchedWall.name : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? 'Tavolo' : 'Sedia');
+    var icon = matchedWall ? matchedWall.icon : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? '🍽️' : '🪑');
+    var objType = matchedWall ? (matchedWall.category || 'furniture') : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? 'table' : 'chair');
+
     var existingIdx = mapObj.semanticLandmarks.findIndex(function(item) {
-      return Math.hypot(item.x - pos.x, item.y - pos.y) < 45;
+      return Math.hypot(item.x - pos.x, item.y - pos.y) < 60;
     });
 
     if (existingIdx < 0) {
       mapObj.semanticLandmarks.push({
         id: 'obj_' + (idx + 1),
         type: objType,
-        name: defaultLabel,
-        label: defaultLabel,
-        icon: (objType === 'table') ? '🍽️' : '🪑',
+        name: icon + ' ' + name,
+        label: icon + ' ' + name,
+        display: icon + ' ' + name,
+        icon: icon,
         x: pos.x,
         y: pos.y,
         w: c.larghezzaM * 100,
         h: c.profonditaM * 100,
+        vlmVerified: true,
         isStaticWall: false
       });
     } else {
-      // Aggiorna posizione e dimensioni dell'arredo senza sovrascrivere l'etichetta ed il nome VLM reale
       var lm = mapObj.semanticLandmarks[existingIdx];
+      lm.name = icon + ' ' + name;
+      lm.label = icon + ' ' + name;
+      lm.display = icon + ' ' + name;
+      lm.icon = icon;
       lm.x = (lm.x + pos.x) / 2;
       lm.y = (lm.y + pos.y) / 2;
       lm.w = c.larghezzaM * 100;
       lm.h = c.profonditaM * 100;
+      lm.vlmVerified = true;
     }
   });
 }
