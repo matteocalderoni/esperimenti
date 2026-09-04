@@ -64,14 +64,19 @@ function findHunterTarget(cur, dGrid) {
 function rankFrontiersByBlindness(cur, frontiers) {
   var midX = Math.floor(slamMap.width / 2), midY = Math.floor(slamMap.height / 2);
   frontiers.forEach(function(f) {
-    var dist = Math.hypot(f.gx - cur.gx, f.gy - cur.gy), unexp = 0;
+    var dist = Math.hypot(f.gx - cur.gx, f.gy - cur.gy), unexp = 0, nearObs = false;
     for (var dy = -5; dy <= 5; dy += 2) {
       for (var dx = -5; dx <= 5; dx += 2) {
         var ny = f.gy + dy, nx = f.gx + dx;
-        if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width && slamMap.grid[ny][nx] === -1) unexp++;
+        if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width) {
+          if (slamMap.grid[ny][nx] === -1) unexp++;
+          if (slamMap.grid[ny][nx] === 1) nearObs = true;
+        }
       }
     }
-    f.score = (unexp * 3.0) + (f.size * 1.5) - (dist * 0.6);
+    // Bonus prioritario per le zone inesplorate vicine agli ostacoli: guida la macchina a percorrere vie alternative per completare la mappa
+    var obsBonus = nearObs ? 25.0 : 0.0;
+    f.score = (unexp * 4.0) + (f.size * 2.0) + obsBonus - (dist * 0.12);
   });
   return frontiers.sort(function(a, b) { return b.score - a.score; });
 }

@@ -228,10 +228,10 @@ function solidifyClusterInteriors(mapObj) {
       // Per gli arredi accostati a parete, salda il bounding box fino al filo del muro reale perimetrale
       var effMinX = c.minX, effMaxX = c.maxX, effMinY = c.minY, effMaxY = c.maxY;
       if (c.isWallAttached) {
-        if (effMinX <= 10) effMinX = 1;
-        if (effMaxX >= mapObj.width - 10) effMaxX = mapObj.width - 2;
-        if (effMinY <= 10) effMinY = 1;
-        if (effMaxY >= mapObj.height - 10) effMaxY = mapObj.height - 2;
+        if (effMinX <= 6) effMinX = 1;
+        if (effMaxX >= mapObj.width - 7) effMaxX = mapObj.width - 2;
+        if (effMinY <= 6) effMinY = 1;
+        if (effMaxY >= mapObj.height - 7) effMaxY = mapObj.height - 2;
       }
 
       for (var gy = effMinY; gy <= effMaxY; gy++) {
