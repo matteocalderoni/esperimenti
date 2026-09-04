@@ -16,7 +16,8 @@ const RICHIAMO_MURI_MINIMO = 35;
 
 // Il rilievo deve concludersi: con le pose di osservazione una rotta si trova
 // quasi sempre, e senza un criterio di progresso l'esplorazione non finirebbe.
-const TICK_MASSIMI_PER_CONCLUDERE = 8000;
+// Scalato per l'arena 3x (2100x1560) con 5 mobili.
+const TICK_MASSIMI_PER_CONCLUDERE = 15000;
 
 function esploraFinoInFondo() {
   const sim = loadSimFromIndex();
