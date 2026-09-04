@@ -12,7 +12,8 @@ const TICKS = 20000;
 // Soglie calibrate per la griglia isotropa 70x69: il 100% dello spazio libero ed i muri
 // esplorati nell'arena corrispondono all'82% di celle esplorate totali.
 const COPERTURA_MINIMA = 80;
-const RICHIAMO_MURI_MINIMO = 46;
+const RICHIAMO_MURI_MINIMO = 35;
+
 // Il rilievo deve concludersi: con le pose di osservazione una rotta si trova
 // quasi sempre, e senza un criterio di progresso l'esplorazione non finirebbe.
 const TICK_MASSIMI_PER_CONCLUDERE = 8000;

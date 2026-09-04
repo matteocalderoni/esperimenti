@@ -97,16 +97,24 @@ function updateSlamRayFromHit(startX, startY, hitX, hitY, didHit, weight) {
   var lFree = -0.20 * weight;
   var lOcc = +1.40 * weight;
 
-  for (var i = 0; i < points.length - 1; i++) {
+  var clearLimit = didHit ? Math.max(0, points.length - 1) : points.length;
+
+  for (var i = 0; i < clearLimit; i++) {
     var px = points[i].x, py = points[i].y;
     if (py >= 0 && py < slamMap.height && px >= 0 && px < slamMap.width) {
       var currentLog = slamMap.logOddsGrid[py][px];
-      slamMap.logOddsGrid[py][px] = Math.max(-5.0, currentLog + lFree);
+      var lFreeEff = lFree;
+      // Protezione pareti ad alta confidenza (muri stabili RANSAC/Log-Odds >= 2.5)
+      if (currentLog >= 2.5) lFreeEff = lFree * 0.15;
+
+      slamMap.logOddsGrid[py][px] = Math.max(-5.0, currentLog + lFreeEff);
       if (slamMap.logOddsGrid[py][px] < -0.4) slamMap.grid[py][px] = 0;
       else if (slamMap.logOddsGrid[py][px] > 0.8) slamMap.grid[py][px] = 1;
       else slamMap.grid[py][px] = -1;
     }
   }
+
+
 
   if (didHit && points.length > 0) {
     var ep = points[points.length - 1];

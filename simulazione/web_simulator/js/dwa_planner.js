@@ -25,10 +25,10 @@ var DWA = {
   accSpeed: 240,       // px/s^2
   accSteer: 12,        // rad/s^2
   clearanceCap: 90,    // px oltre i quali piu' spazio non aggiunge punteggio
-  footprintMargin: 1.15,  // stesso margine della dilatazione del pianificatore A*
-  wHeading: 2.4,       // allineamento al goal
-  wClearance: 1.6,     // margine dagli ostacoli
-  wSpeed: 1.0,         // preferenza per la marcia spedita
+  footprintMargin: 1.45,  // raggio di sicurezza elevato per impedire manovre pericolose vicino ai mobili
+  wHeading: 2.0,       // allineamento al goal
+  wClearance: 3.5,     // priorita' massima alla sicurezza e distanza dagli ostacoli
+  wSpeed: 0.8,         // preferenza per la marcia moderata e sicura
   wSmooth: 0.5         // preferenza per le traiettorie tese
 };
 

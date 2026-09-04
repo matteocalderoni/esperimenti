@@ -69,11 +69,11 @@ function renderCadBlueprint(ctx, w, h) {
         return inside || Math.hypot(lm.x - worldCX, lm.y - worldCY) < 30;
       });
 
-      var title = matchedLm ? (matchedLm.icon + ' ' + matchedLm.name) : ('Ostacolo #' + (idx + 1));
+      var title = matchedLm ? ((matchedLm.icon ? matchedLm.icon + ' ' : '') + (matchedLm.name || matchedLm.display || matchedLm.label || 'Arredo')) : ('Ostacolo #' + (idx + 1));
       var dimStr = formatQuota(c.larghezzaM) + ' × ' + formatQuota(c.profonditaM);
 
-      // Tratteggio e Campitura Pulita Tecnica CAD
-      ctx.fillStyle = dark ? 'rgba(0,240,255,0.15)' : 'rgba(241,245,249,0.85)';
+      // Campitura Omogenea Solida Tecnica CAD
+      ctx.fillStyle = dark ? '#1e1b4b' : '#334155';
       ctx.fillRect(ox, oy, ow, oh);
       ctx.strokeStyle = dark ? '#00f0ff' : '#0f172a';
       ctx.lineWidth = 1.5; ctx.strokeRect(ox, oy, ow, oh);

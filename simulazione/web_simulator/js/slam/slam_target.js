@@ -12,23 +12,39 @@ function slamNoProgress() {
   return false;
 }
 
+function isSafeOpenSpaceTarget(dGrid, tx, ty) {
+  if (tx < 3 || tx >= slamMap.width - 3 || ty < 3 || ty >= slamMap.height - 3) return false;
+  for (var dy = -2; dy <= 2; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      if (dGrid[ty + dy] && dGrid[ty + dy][tx + dx] === 1) return false;
+    }
+  }
+  return true;
+}
+
 function findUnrecognizedObstacleTarget(cur) {
   if (!slamMap || !slamMap.grid) return null;
   var W = getArenaW(), H = getArenaH();
   var landmarks = slamMap.semanticLandmarks || [];
+  var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
   
   for (var gy = 4; gy < slamMap.height - 4; gy += 3) {
     for (var gx = 4; gx < slamMap.width - 4; gx += 3) {
       if (slamMap.grid[gy][gx] === 1) {
         var worldX = (gx / slamMap.width) * W, worldY = (gy / slamMap.height) * H;
-        var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55; });
+        var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55 && lm.vlmVerified === true; });
         if (!isRecognized) {
-          // Trova una cella libera vicina per scattare da vicino
-          var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
-          if (dGrid[gy][gx-3] === 0) return { x: gx - 3, y: gy };
-          if (dGrid[gy][gx+3] === 0) return { x: gx + 3, y: gy };
-          if (dGrid[gy-3] && dGrid[gy-3][gx] === 0) return { x: gx, y: gy - 3 };
-          if (dGrid[gy+3] && dGrid[gy+3][gx] === 0) return { x: gx, y: gy + 3 };
+          // Cerca una posizione di osservazione in spazio aperto ampio (escludendo i varchi stretti)
+          var candidates = [
+            { x: gx, y: gy - 4 }, { x: gx, y: gy + 4 },
+            { x: gx - 4, y: gy }, { x: gx + 4, y: gy }
+          ];
+          for (var ci = 0; ci < candidates.length; ci++) {
+            var cand = candidates[ci];
+            if (isSafeOpenSpaceTarget(dGrid, cand.x, cand.y)) {
+              return cand;
+            }
+          }
         }
       }
     }

@@ -8,8 +8,8 @@
 // Qui il margine parte sempre da CAR_RADIUS_PX e viene convertito in celle
 // separatamente per asse.
 
-// Margine di sicurezza oltre il raggio del telaio (10%).
-var SLAM_SAFETY_MARGIN = 1.10;
+// Margine di sicurezza elevato oltre il raggio del telaio (55%): blocca i varchi stretti < 70cm ed impone l'aggiramento sicuro.
+var SLAM_SAFETY_MARGIN = 1.55;
 
 /**
  * Raggio di dilatazione in celle, per asse, che copre l'ingombro reale.

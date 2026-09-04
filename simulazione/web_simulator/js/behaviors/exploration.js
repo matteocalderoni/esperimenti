@@ -15,6 +15,35 @@ function runExplorationBehavior() {
   if (!slamMap.grid) initSlamGrid();
   if (slamMap.stats.exploredPct >= 99) slamMap.fsmState = 'COMPLETE';
 
+  // Proactive Cluster Retry Engine: Insiste con la scansione VLM per tutti gli ostacoli NON ancora identificati
+  if (slamMap.fsmState !== 'NAVIGATE' && typeof THREE !== 'undefined' && typeof vlmInspecting !== 'undefined' && !vlmInspecting && typeof findSlamClusters === 'function' && typeof triggerStationaryVlmInspection === 'function') {
+    var clusters = findSlamClusters(true);
+    var W = typeof getArenaW === 'function' ? getArenaW() : 700;
+    var H = typeof getArenaH === 'function' ? getArenaH() : 520;
+    var nowTime = Date.now();
+
+    var unverifiedCluster = clusters.find(function(c) {
+      var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
+      var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
+      if (cX <= 20 || cX >= W - 20 || cY <= 20 || cY >= H - 20) return false;
+      
+      // Se il cluster e' gia' stato identificato e verificato dal VLM, il programma e' gia' soddisfatto
+      if (typeof isClusterVlmVerified === 'function' && isClusterVlmVerified(cX, cY)) return false;
+
+      var lastAttempt = c.lastVlmAttemptTime || 0;
+      var attempts = c.vlmAttempts || 0;
+
+      // Cooldown di 2.5s tra tentativi successivi e insiste fino a 10 tentativi per ostacolo non riconosciuto
+      return (nowTime - lastAttempt > 2500) && (attempts < 10);
+    });
+
+    if (unverifiedCluster) {
+      unverifiedCluster.lastVlmAttemptTime = nowTime;
+      unverifiedCluster.vlmAttempts = (unverifiedCluster.vlmAttempts || 0) + 1;
+      triggerStationaryVlmInspection(unverifiedCluster);
+    }
+  }
+
   // 1. HEAD_SCAN: Scansione Panoramica Pan-Tilt da Fermo + Scatto VLM
   if (slamMap.fsmState === 'HEAD_SCAN' || slamMap.fsmState === 'HEAD_SCAN_1' || slamMap.fsmState === 'INITIAL_SCAN') {
     robotState.speed = 0; robotState.steering = 0;
@@ -78,9 +107,9 @@ function runExplorationBehavior() {
     scanAllRays();
     if (typeof navigateSlamPath === 'function') navigateSlamPath();
 
-    // Se ha percorso più di 90px dall'ultimo scatto, attiva una scansione intermedia distribuita
+    // Se ha percorso piu' di 220px (~2.2m) dall'ultimo scatto, attiva una scansione intermedia distribuita
     var distFromLast = Math.hypot(robotState.x - lastVlmScanPos.x, robotState.y - lastVlmScanPos.y);
-    if (distFromLast > 90) {
+    if (distFromLast > 220) {
       robotState.speed = 0; robotState.steering = 0;
       slamMap.scanStep = 0;
       slamMap.fsmState = 'HEAD_SCAN';

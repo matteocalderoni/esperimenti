@@ -59,14 +59,12 @@ const arenaObjects = {
     {x: 150, y: 370},
     {x: 100, y: 260}
   ],
-  // Mobili ed Elettrodomestici della Cucina Abitabile (Texture Fotografiche Reali & VLM)
+  // Arena con 2 Mobili Distinti (Tavolo da Pranzo e Frigorifero), entrambi con 4 lati liberi per il passaggio
   walls: [
-    { x: 30, y: 20, w: 200, h: 45, name: 'Piano Cottura & Lavello', icon: '🍳', category: 'kitchen', vlm: 'Piano cottura e lavello inox', asset: '/simulator/assets/furniture/stove_sink.jpg' },
-    { x: 20, y: 380, w: 55, h: 55, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' },
-    { x: 260, y: 200, w: 150, h: 80, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
-    { x: 480, y: 20, w: 45, h: 140, name: 'Penisola / Bancone', icon: '🍸', category: 'counter', vlm: 'Penisola snack con sgabelli', asset: '/simulator/assets/furniture/peninsula.jpg' },
-    { x: 430, y: 440, w: 140, h: 45, name: 'Mobile Credenza', icon: '🗄️', category: 'storage', vlm: 'Credenza madia cucina', asset: '/simulator/assets/furniture/sideboard.jpg' }
+    { x: 160, y: 220, w: 130, h: 75, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
+    { x: 15, y: 335, w: 95, h: 85, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero in acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' }
   ],
+
   // Target Colore per OpenCV (Pallina verde)
   targetBall: { x: 350, y: 90, radius: 18, color: '#00ff55' },
   // Sorgente Luminosa per TrackLight
