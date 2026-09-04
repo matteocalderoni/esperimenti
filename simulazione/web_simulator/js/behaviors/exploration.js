@@ -107,9 +107,9 @@ function runExplorationBehavior() {
     scanAllRays();
     if (typeof navigateSlamPath === 'function') navigateSlamPath();
 
-    // Se ha percorso piu' di 220px (~2.2m) dall'ultimo scatto, attiva una scansione intermedia distribuita
+    // Se ha percorso piu' di 450px (~4.5m) dall'ultimo scatto, attiva una scansione intermedia distribuita
     var distFromLast = Math.hypot(robotState.x - lastVlmScanPos.x, robotState.y - lastVlmScanPos.y);
-    if (distFromLast > 220) {
+    if (distFromLast > 450) {
       robotState.speed = 0; robotState.steering = 0;
       slamMap.scanStep = 0;
       slamMap.fsmState = 'HEAD_SCAN';

@@ -45,11 +45,4 @@ function navigateSlamPath(dt) {
   }
 
   slamMap.stepCounter++;
-  if (slamMap.stepCounter >= 120) {
-    slamMap.stepCounter = 0;
-    robotState.speed = 0;
-    robotState.steering = 0;
-    slamMap.scanStep = 0;
-    slamMap.fsmState = 'HEAD_SCAN';
-  }
 }

@@ -2,14 +2,32 @@
 // Selezione dell'Obiettivo di Esplorazione & Ispezione Ravvicinata VLM
 
 function slamNoProgress() {
+  var frontiers = slamMap.frontiers || [];
+  if (frontiers.length > 0 && slamMap.stats.exploredPct < 90) {
+    slamMap.noProgressRounds = 0;
+    return false;
+  }
   if (slamMap.stats.exploredPct > (slamMap.lastProgressPct || 0)) {
     slamMap.lastProgressPct = slamMap.stats.exploredPct;
     slamMap.noProgressRounds = 0;
     return false;
   }
   slamMap.noProgressRounds = (slamMap.noProgressRounds || 0) + 1;
-  if (slamMap.noProgressRounds > 14) { slamMap.noProgressRounds = 0; return true; }
+  if (slamMap.noProgressRounds > 35) { slamMap.noProgressRounds = 0; return true; }
   return false;
+}
+
+var recentTargetsQueue = [];
+
+function isRecentlyVisitedTarget(gx, gy) {
+  var now = Date.now();
+  // Mantieni in memoria gli obiettivi visitati negli ultimi 6 secondi
+  recentTargetsQueue = recentTargetsQueue.filter(function(t) { return now - t.time < 6000; });
+  return recentTargetsQueue.some(function(t) { return Math.hypot(t.gx - gx, t.gy - gy) < 6; });
+}
+
+function markTargetAsVisited(gx, gy) {
+  recentTargetsQueue.push({ gx: gx, gy: gy, time: Date.now() });
 }
 
 function isSafeOpenSpaceTarget(dGrid, tx, ty) {
@@ -34,14 +52,13 @@ function findUnrecognizedObstacleTarget(cur) {
         var worldX = (gx / slamMap.width) * W, worldY = (gy / slamMap.height) * H;
         var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55 && lm.vlmVerified === true; });
         if (!isRecognized) {
-          // Cerca una posizione di osservazione in spazio aperto ampio (escludendo i varchi stretti)
           var candidates = [
             { x: gx, y: gy - 4 }, { x: gx, y: gy + 4 },
             { x: gx - 4, y: gy }, { x: gx + 4, y: gy }
           ];
           for (var ci = 0; ci < candidates.length; ci++) {
             var cand = candidates[ci];
-            if (isSafeOpenSpaceTarget(dGrid, cand.x, cand.y)) {
+            if (isSafeOpenSpaceTarget(dGrid, cand.x, cand.y) && !isRecentlyVisitedTarget(cand.x, cand.y)) {
               return cand;
             }
           }
@@ -53,54 +70,92 @@ function findUnrecognizedObstacleTarget(cur) {
 }
 
 function planSlamExplorationPath(cur) {
-  // 1. Ispezione Proattiva Ravvicinata di Ostacoli Non Ancora Riconosciuti
-  var unrecTarget = findUnrecognizedObstacleTarget(cur);
-  if (unrecTarget) {
-    var unrecPath = planAdaptiveSlamAStar(cur, unrecTarget);
-    if (unrecPath && unrecPath.length > 1) {
-      slamMap.targetFrontier = unrecTarget;
-      return unrecPath;
+  var path = [];
+
+  // 1. Ranking Frontiere per Information Gain (Esplorazione ad Ampio Raggio per Tutta la Stanza)
+  var frontiers = slamMap.frontiers || [];
+  var ranked = (typeof rankFrontiersByBlindness === 'function')
+    ? rankFrontiersByBlindness(cur, frontiers) : frontiers;
+
+  for (var fi = 0; fi < Math.min(40, ranked.length); fi++) {
+    var f = ranked[fi];
+    if (isRecentlyVisitedTarget(f.gx, f.gy)) continue;
+
+    path = planAdaptiveSlamAStar(cur, f);
+    if (path.length > 1) {
+      slamMap.targetFrontier = f;
+      markTargetAsVisited(f.gx, f.gy);
+      return path;
     }
   }
 
-  // 2. Percorso Boustrophedon di Copertura
+  // 1b. Fallback: Prova qualsiasi frontiera raggiungibile anche se in cooldown
+  for (var fi2 = 0; fi2 < Math.min(40, ranked.length); fi2++) {
+    var f2 = ranked[fi2];
+    path = planAdaptiveSlamAStar(cur, f2);
+    if (path.length > 1) {
+      slamMap.targetFrontier = f2;
+      markTargetAsVisited(f2.gx, f2.gy);
+      return path;
+    }
+  }
+
+  // 2. Percorso Boustrophedon di Copertura Spazio Aperto
   if (typeof generateBoustrophedonPath === 'function' && !slamMap.boustrophedonDone) {
     var bPath = generateBoustrophedonPath(3);
     if (bPath && bPath.length > 2) {
-      for (var bi = 0; bi < Math.min(15, bPath.length); bi++) {
-        var bp = planAdaptiveSlamAStar(cur, bPath[bi]);
-        if (bp && bp.length > 1) { slamMap.targetFrontier = bPath[bi]; return bp; }
+      for (var bi = 0; bi < Math.min(20, bPath.length); bi++) {
+        var bp = bPath[bi];
+        if (isRecentlyVisitedTarget(bp.gx, bp.gy)) continue;
+
+        var pathB = planAdaptiveSlamAStar(cur, bp);
+        if (pathB && pathB.length > 1) {
+          slamMap.targetFrontier = bp;
+          markTargetAsVisited(bp.gx, bp.gy);
+          return pathB;
+        }
       }
       slamMap.boustrophedonDone = true;
     }
   }
 
-  // 3. Ranking Frontiere per Information Gain
-  var ranked = (typeof rankFrontiersByBlindness === 'function')
-    ? rankFrontiersByBlindness(cur, slamMap.frontiers) : slamMap.frontiers;
-  var path = [];
-
-  for (var fi = 0; fi < Math.min(30, ranked.length); fi++) {
-    path = planAdaptiveSlamAStar(cur, ranked[fi]);
-    if (path.length > 1) { slamMap.targetFrontier = ranked[fi]; return path; }
-  }
-
-  if (typeof findObservationPose === 'function') {
-    var dGrid = getDilatedSlamGrid();
-    for (var oi = 0; oi < Math.min(12, ranked.length); oi++) {
-      var posa = findObservationPose(cur, ranked[oi], dGrid);
-      if (!posa) continue;
-      path = planAdaptiveSlamAStar(cur, posa);
-      if (path.length > 1) { slamMap.targetFrontier = ranked[oi]; return path; }
+  // 3. Ispezione Proattiva Ostacoli Non Ancora Riconosciuti (solo se non ci sono frontiere aperte)
+  var unrecTarget = findUnrecognizedObstacleTarget(cur);
+  if (unrecTarget && !isRecentlyVisitedTarget(unrecTarget.x, unrecTarget.y)) {
+    var unrecPath = planAdaptiveSlamAStar(cur, unrecTarget);
+    if (unrecPath && unrecPath.length > 1) {
+      slamMap.targetFrontier = unrecTarget;
+      markTargetAsVisited(unrecTarget.x, unrecTarget.y);
+      return unrecPath;
     }
   }
 
+  // 4. Fallback Posa di Osservazione per frontiere lontane
+  if (typeof findObservationPose === 'function') {
+    var dGrid = getDilatedSlamGrid();
+    for (var oi = 0; oi < Math.min(15, ranked.length); oi++) {
+      var posa = findObservationPose(cur, ranked[oi], dGrid);
+      if (!posa) continue;
+      path = planAdaptiveSlamAStar(cur, posa);
+      if (path.length > 1) {
+        slamMap.targetFrontier = ranked[oi];
+        markTargetAsVisited(posa.gx, posa.gy);
+        return path;
+      }
+    }
+  }
+
+  // 5. Hunter Target (per residui di celle non esplorate)
   if (slamMap.stats.exploredPct < 99 && typeof findHunterTarget === 'function') {
     var hunter = findHunterTarget(cur, getDilatedSlamGrid());
     if (hunter) {
       path = planAdaptiveSlamAStar(cur, hunter);
-      if (path.length > 1) return path;
+      if (path.length > 1) {
+        markTargetAsVisited(hunter.gx, hunter.gy);
+        return path;
+      }
     }
   }
+
   return [];
 }
