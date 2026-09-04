@@ -89,11 +89,11 @@ function loadSimFromIndex() {
   return loadSim(files,
     ['robotState', 'arenaObjects', 'slamMap', 'updatePhysics', 'initSlamGrid',
      'slamGridToWorld', 'updateSensors', 'jsBehaviors', 'solidifyClusterInteriors', 'findSlamClusters'],
-    { arenaCanvas: fakeCanvas(446, 438), fetch: () => Promise.reject(new Error('offline')) });
+    { arenaCanvas: fakeCanvas(2100, 1560), fetch: () => Promise.reject(new Error('offline')) });
 }
 
 /** Qualita' della mappa SLAM confrontata con la verita' a terra dell'arena. */
-function groundTruthMapQuality(sim, W = 446, H = 438, bordo = 12) {
+function groundTruthMapQuality(sim, W = 2100, H = 1560, bordo = 12) {
   const cell = W / sim.slamMap.width;
   const eMuro = (x, y) =>
     x < bordo || x > W - bordo || y < bordo || y > H - bordo ||

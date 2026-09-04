@@ -44,10 +44,10 @@ function testWallAttachedObjectRecognition() {
   console.log(`\n📊 Mappa Finale: Copertura ${q.copertura}%, Richiamo Muri ${q.richiamoMuri}%, Falsi Muri ${q.falsiMuri}, Celle Libere ${q.libereCorrette}%`);
 
   // Verifiche:
-  // 1. Deve esserci almeno 1 cluster per il frigo a parete (oppure separato)
-  assert.ok(clusters.length >= 2, `Attesi almeno 2 cluster (tavolo + frigo), trovati ${clusters.length}`);
+  // 1. Devono esserci cluster d'arredo rilevati
+  assert.ok(clusters.length >= 2, `Attesi almeno 2 cluster d'arredo, trovati ${clusters.length}`);
   
-  // 2. Il frigo deve essere presente tra i landmark semantici
+  // 2. I landmark semantici devono essere mappati sulla piantina 2D
   assert.ok(sim.slamMap.semanticLandmarks.length >= 2, `Attesi almeno 2 landmark semantici, trovati ${sim.slamMap.semanticLandmarks.length}`);
 
   console.log('\n✅ TEST ARREDO A PARETE SUPERATO CON SUCCESSO!');

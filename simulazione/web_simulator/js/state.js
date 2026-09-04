@@ -13,12 +13,12 @@ const CAR_RADIUS_PX = 22;
 // Stato del Robot Simulato
 const robotState = {
   // Posizione e Fisica Veicolo
-  x: 350,
-  y: 150,
+  x: 1050,
+  y: 780,
   angle: 0,           // Angolo di rotta in radianti (0 = destra, PI/2 = giù)
   speed: 0,           // Velocità lineare in px/s
   steering: 0,        // Velocità angolare in rad/s
-  maxSpeed: 210,      // px/s
+  maxSpeed: 300,      // px/s
 
   // Servomotori Pan-Tilt
   panAngle: 0,        // -90° (destra) a +90° (sinistra)
@@ -48,28 +48,30 @@ const robotState = {
   stuckEscaping: false  // Manovra di fuga attiva
 };
 
-// Mappa Ostacoli e Tracciato nell'Arena (Canvas 700x520)
+// Mappa Ostacoli e Tracciato nell'Arena Triplicata (Canvas 2100x1560)
 const arenaObjects = {
-  // Tracciato Linea Nera (Loop ovale)
+  // Tracciato Linea Nera (Loop ovale triplicato)
   lineTrack: [
-    {x: 150, y: 150},
-    {x: 550, y: 150},
-    {x: 600, y: 260},
-    {x: 550, y: 370},
-    {x: 150, y: 370},
-    {x: 100, y: 260}
+    {x: 450, y: 450},
+    {x: 1650, y: 450},
+    {x: 1800, y: 780},
+    {x: 1650, y: 1110},
+    {x: 450, y: 1110},
+    {x: 300, y: 780}
   ],
-  // Arena con 3 Mobili Distinti (Tavolo da Pranzo, Frigorifero e Credenza)
+  // Arena Triplicata con 5 Mobili Semantici Distinti
   walls: [
-    { x: 160, y: 220, w: 130, h: 75, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
-    { x: 15, y: 335, w: 95, h: 85, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero in acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' },
-    { x: 420, y: 15, w: 110, h: 75, name: 'Credenza', icon: '🗄️', category: 'storage', vlm: 'Credenza e mobile contenitore', asset: '/simulator/assets/furniture/sideboard.jpg' }
+    { x: 480, y: 660, w: 390, h: 225, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
+    { x: 30, y: 1005, w: 285, h: 255, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero in acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' },
+    { x: 1260, y: 30, w: 330, h: 225, name: 'Credenza', icon: '🗄️', category: 'storage', vlm: 'Credenza e mobile contenitore', asset: '/simulator/assets/furniture/sideboard.jpg' },
+    { x: 1350, y: 960, w: 360, h: 240, name: 'Divano', icon: '🛋️', category: 'seating', vlm: 'Divano a tre posti', asset: '/simulator/assets/furniture/sofa.jpg' },
+    { x: 30, y: 360, w: 300, h: 210, name: 'Piano Cottura', icon: '🍳', category: 'kitchen', vlm: 'Piano cottura e lavello', asset: '/simulator/assets/furniture/countertop.jpg' }
   ],
 
   // Target Colore per OpenCV (Pallina verde)
-  targetBall: { x: 350, y: 90, radius: 18, color: '#00ff55' },
+  targetBall: { x: 1050, y: 270, radius: 24, color: '#00ff55' },
   // Sorgente Luminosa per TrackLight
-  lightSource: { x: 580, y: 100, radius: 25, color: '#ffbe0b' }
+  lightSource: { x: 1740, y: 300, radius: 35, color: '#ffbe0b' }
 };
 
 function updateModeBadge() {

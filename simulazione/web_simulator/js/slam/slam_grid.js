@@ -24,10 +24,10 @@ var slamMap = {
 var SCAN_FAN_DEG = [-120, -90, -60, -40, -20, 0, 20, 40, 60, 90, 120];
 
 function getArenaW() {
-  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.width) ? arenaCanvas.width : 700;
+  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.width) ? arenaCanvas.width : 2100;
 }
 function getArenaH() {
-  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.height) ? arenaCanvas.height : 520;
+  return (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.height) ? arenaCanvas.height : 1560;
 }
 
 function initSlamGrid() {
