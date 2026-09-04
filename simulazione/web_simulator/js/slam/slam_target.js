@@ -45,11 +45,22 @@ function findUnrecognizedObstacleTarget(cur) {
   var W = getArenaW(), H = getArenaH();
   var landmarks = slamMap.semanticLandmarks || [];
   var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
-  
+  var clusters = (typeof findSlamClusters === 'function') ? findSlamClusters(true) : [];
+
   for (var gy = 4; gy < slamMap.height - 4; gy += 3) {
     for (var gx = 4; gx < slamMap.width - 4; gx += 3) {
       if (slamMap.grid[gy][gx] === 1) {
         var worldX = (gx / slamMap.width) * W, worldY = (gy / slamMap.height) * H;
+        
+        // Verifica se l'ostacolo appartiene a un cluster abbandonato o già verificato
+        var isAbandonedOrVerified = clusters.some(function(c) {
+          var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
+          var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
+          var near = Math.hypot(cX - worldX, cY - worldY) < 60;
+          return near && (c.vlmAbandoned === true || (c.vlmAttempts || 0) >= 3);
+        });
+        if (isAbandonedOrVerified) continue;
+
         var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55 && lm.vlmVerified === true; });
         if (!isRecognized) {
           var candidates = [

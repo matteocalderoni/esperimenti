@@ -15,7 +15,7 @@ class VLMInspector:
             {"id": "frigorifero", "keys": ["refrigerator", "fridge", "frigorifero", "cooler", "freezer", "frigo", "appliance", "cooling unit", "kitchen appliance", "tall unit", "cold box", "metallic appliance", "white appliance", "silver fridge"], "display": "Frigorifero", "icon": "🧊", "type": "APPLIANCE"},
             {"id": "credenza", "keys": ["sideboard", "credenza", "cabinet", "cupboard", "bookcase", "shelf", "libreria", "dresser", "shelf unit", "storage unit", "cassettiera"], "display": "Mobile / Credenza", "icon": "🗄️", "type": "STORAGE"},
             {"id": "penisola", "keys": ["kitchen island", "peninsula", "bar stool", "sgabello da bar", "bancone", "breakfast bar", "island"], "display": "Penisola / Bancone", "icon": "🍸", "type": "COUNTER"},
-            {"id": "divano", "keys": ["sofa", "couch", "armchair", "divano", "poltrona", "canapè"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
+            {"id": "divano", "keys": ["sofa", "couch", "armchair", "divano", "poltrona", "canapè", "divanetto", "lounge", "seating unit", "living room sofa"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
             {"id": "letto", "keys": ["bed", "mattress", "letto", "lettino"], "display": "Letto", "icon": "🛏️", "type": "BED"},
             {"id": "sedia", "keys": ["chair", "stool", "sedia", "sgabello", "poltroncina", "seggiola", "seat", "seating", "bench", "panca"], "display": "Sedia / Sgabello", "icon": "🪑", "type": "CHAIR"},
             {"id": "tv", "keys": ["television", "tv", "monitor", "screen", "schermo", "display"], "display": "TV / Schermo", "icon": "📺", "type": "SCREEN"},

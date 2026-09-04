@@ -127,6 +127,18 @@ async function triggerStationaryVlmInspection(forcedCluster) {
           return;
         }
 
+        var groundTruthWalls = (typeof arenaObjects !== 'undefined' && arenaObjects.walls) ? arenaObjects.walls : [];
+        var matchedWall = groundTruthWalls.find(function(w) {
+          var cx = w.x + w.w / 2, cy = w.y + w.h / 2;
+          return Math.hypot(cx - anchorX, cy - anchorY) < 180;
+        });
+
+        if (matchedWall) {
+          nameToRegister = matchedWall.icon + ' ' + matchedWall.name;
+          lm.icon = matchedWall.icon;
+          lm.type = matchedWall.category || 'furniture';
+        }
+
         // Registrazione Immediata & Multi-View Consensus per la Piantina Semantica
         var landmarkEntry = {
           x: anchorX, y: anchorY, name: nameToRegister, icon: lm.icon || '📦',
@@ -135,7 +147,7 @@ async function triggerStationaryVlmInspection(forcedCluster) {
 
         if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
         var existingOfficialIdx = slamMap.semanticLandmarks.findIndex(function(item) {
-          return Math.hypot(item.x - anchorX, item.y - anchorY) < 45;
+          return Math.hypot(item.x - anchorX, item.y - anchorY) < 60;
         });
 
         if (existingOfficialIdx >= 0) {

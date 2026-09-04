@@ -27,19 +27,25 @@ function runExplorationBehavior() {
       var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
       if (cX <= 20 || cX >= W - 20 || cY <= 20 || cY >= H - 20) return false;
       
-      // Se il cluster e' gia' stato identificato e verificato dal VLM, il programma e' gia' soddisfatto
+      if (c.vlmAbandoned === true) return false;
       if (typeof isClusterVlmVerified === 'function' && isClusterVlmVerified(cX, cY)) return false;
 
       var lastAttempt = c.lastVlmAttemptTime || 0;
       var attempts = c.vlmAttempts || 0;
 
-      // Cooldown di 2.5s tra tentativi successivi e insiste fino a 10 tentativi per ostacolo non riconosciuto
-      return (nowTime - lastAttempt > 2500) && (attempts < 10);
+      if (attempts >= 3) {
+        c.vlmAbandoned = true;
+        return false;
+      }
+
+      // Cooldown di 2.5s tra tentativi successivi e rinuncia dopo 3 tentativi per ostacolo non riconosciuto
+      return (nowTime - lastAttempt > 2500) && (attempts < 3);
     });
 
     if (unverifiedCluster) {
       unverifiedCluster.lastVlmAttemptTime = nowTime;
       unverifiedCluster.vlmAttempts = (unverifiedCluster.vlmAttempts || 0) + 1;
+      if (unverifiedCluster.vlmAttempts >= 3) unverifiedCluster.vlmAbandoned = true;
       triggerStationaryVlmInspection(unverifiedCluster);
     }
   }
