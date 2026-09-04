@@ -59,10 +59,11 @@ const arenaObjects = {
     {x: 150, y: 370},
     {x: 100, y: 260}
   ],
-  // Arena con 2 Mobili Distinti (Tavolo da Pranzo e Frigorifero), entrambi con 4 lati liberi per il passaggio
+  // Arena con 3 Mobili Distinti (Tavolo da Pranzo, Frigorifero e Credenza)
   walls: [
     { x: 160, y: 220, w: 130, h: 75, name: 'Tavolo da Pranzo', icon: '🍽️', category: 'furniture', vlm: 'Tavolo da pranzo con sedie', asset: '/simulator/assets/furniture/dining_table.jpg' },
-    { x: 15, y: 335, w: 95, h: 85, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero in acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' }
+    { x: 15, y: 335, w: 95, h: 85, name: 'Frigorifero', icon: '🧊', category: 'appliance', vlm: 'Frigorifero in acciaio inox', asset: '/simulator/assets/furniture/fridge.jpg' },
+    { x: 420, y: 15, w: 110, h: 75, name: 'Credenza', icon: '🗄️', category: 'storage', vlm: 'Credenza e mobile contenitore', asset: '/simulator/assets/furniture/sideboard.jpg' }
   ],
 
   // Target Colore per OpenCV (Pallina verde)
