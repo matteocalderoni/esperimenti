@@ -50,15 +50,20 @@ function initMouseInteraction() {
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const my = (e.clientY - rect.top) * (canvas.height / rect.height);
 
+    const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+    const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
+    const worldX = (mx / canvas.width) * W;
+    const worldY = (my / canvas.height) * H;
+
     const ball = arenaObjects.targetBall;
     const light = arenaObjects.lightSource;
 
-    const distBall = Math.hypot(mx - ball.x, my - ball.y);
-    const distLight = Math.hypot(mx - light.x, my - light.y);
+    const distBall = Math.hypot(worldX - ball.x, worldY - ball.y);
+    const distLight = Math.hypot(worldX - light.x, worldY - light.y);
 
-    if (distBall <= ball.radius + 15) {
+    if (distBall <= ball.radius + 30) {
       isDragging = 'ball';
-    } else if (distLight <= light.radius + 15) {
+    } else if (distLight <= light.radius + 30) {
       isDragging = 'light';
     }
   });
@@ -69,12 +74,17 @@ function initMouseInteraction() {
     const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
     const my = (e.clientY - rect.top) * (canvas.height / rect.height);
 
+    const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+    const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
+    const worldX = (mx / canvas.width) * W;
+    const worldY = (my / canvas.height) * H;
+
     if (isDragging === 'ball') {
-      arenaObjects.targetBall.x = mx;
-      arenaObjects.targetBall.y = my;
+      arenaObjects.targetBall.x = worldX;
+      arenaObjects.targetBall.y = worldY;
     } else if (isDragging === 'light') {
-      arenaObjects.lightSource.x = mx;
-      arenaObjects.lightSource.y = my;
+      arenaObjects.lightSource.x = worldX;
+      arenaObjects.lightSource.y = worldY;
     }
   });
 

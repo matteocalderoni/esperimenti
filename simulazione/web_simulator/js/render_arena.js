@@ -2,22 +2,31 @@
 
 function drawArena() {
   if (!arenaCtx || !arenaCanvas) return;
+
+  const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+  const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
+
   arenaCtx.clearRect(0, 0, arenaCanvas.width, arenaCanvas.height);
 
-  // 1. Griglia Sfondo
-  arenaCtx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-  arenaCtx.lineWidth = 1;
-  const gridSize = 40;
-  for (let x = 0; x < arenaCanvas.width; x += gridSize) {
-    arenaCtx.beginPath(); arenaCtx.moveTo(x, 0); arenaCtx.lineTo(x, arenaCanvas.height); arenaCtx.stroke();
+  arenaCtx.save();
+  const scaleX = arenaCanvas.width / W;
+  const scaleY = arenaCanvas.height / H;
+  arenaCtx.scale(scaleX, scaleY);
+
+  // 1. Griglia Sfondo (passo 120 px = 1.2 metri)
+  arenaCtx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+  arenaCtx.lineWidth = 2;
+  const gridSize = 120;
+  for (let x = 0; x < W; x += gridSize) {
+    arenaCtx.beginPath(); arenaCtx.moveTo(x, 0); arenaCtx.lineTo(x, H); arenaCtx.stroke();
   }
-  for (let y = 0; y < arenaCanvas.height; y += gridSize) {
-    arenaCtx.beginPath(); arenaCtx.moveTo(0, y); arenaCtx.lineTo(arenaCanvas.width, y); arenaCtx.stroke();
+  for (let y = 0; y < H; y += gridSize) {
+    arenaCtx.beginPath(); arenaCtx.moveTo(0, y); arenaCtx.lineTo(W, y); arenaCtx.stroke();
   }
 
-  // 2. Disegna Tracciato Linea Nera
+  // 2. Disegna Tracciato Linea Nera (Loop Ovale)
   arenaCtx.strokeStyle = '#1e293b';
-  arenaCtx.lineWidth = 24;
+  arenaCtx.lineWidth = 36;
   arenaCtx.lineCap = 'round';
   arenaCtx.lineJoin = 'round';
   arenaCtx.beginPath();
@@ -31,18 +40,18 @@ function drawArena() {
   for (const w of arenaObjects.walls) {
     arenaCtx.fillStyle = 'rgba(15, 23, 42, 0.9)';
     arenaCtx.strokeStyle = '#38bdf8';
-    arenaCtx.lineWidth = 1.5;
+    arenaCtx.lineWidth = 4;
     arenaCtx.fillRect(w.x, w.y, w.w, w.h);
     arenaCtx.strokeRect(w.x, w.y, w.w, w.h);
 
     // Decorazione interna (fornelli, lavello, frigo, tavolo)
     if (w.name.includes('Piano Cottura')) {
-      arenaCtx.fillStyle = 'rgba(56,189,248,0.2)'; arenaCtx.fillRect(w.x+4, w.y+4, w.w*0.4, w.h-8); // lavello
-      arenaCtx.strokeStyle = '#f59e0b'; arenaCtx.strokeRect(w.x+w.w*0.5, w.y+6, w.w*0.45, w.h-12); // fornelli
+      arenaCtx.fillStyle = 'rgba(56,189,248,0.2)'; arenaCtx.fillRect(w.x+12, w.y+12, w.w*0.4, w.h-24); // lavello
+      arenaCtx.strokeStyle = '#f59e0b'; arenaCtx.strokeRect(w.x+w.w*0.5, w.y+18, w.w*0.43, w.h-36); // fornelli
     } else if (w.name.includes('Tavolo')) {
-      arenaCtx.strokeStyle = 'rgba(255,255,255,0.2)'; arenaCtx.strokeRect(w.x+8, w.y+8, w.w-16, w.h-16);
+      arenaCtx.strokeStyle = 'rgba(255,255,255,0.2)'; arenaCtx.strokeRect(w.x+24, w.y+24, w.w-48, w.h-48);
     }
-    arenaCtx.fillStyle = '#f8fafc'; arenaCtx.font = 'bold 8px monospace';
+    arenaCtx.fillStyle = '#f8fafc'; arenaCtx.font = 'bold 24px sans-serif';
     arenaCtx.textAlign = 'center'; arenaCtx.textBaseline = 'middle';
     arenaCtx.fillText((w.icon || '📦') + ' ' + w.name, w.x + w.w / 2, w.y + w.h / 2);
   }
@@ -73,7 +82,7 @@ function drawArena() {
   const distPx = robotState.ultrasonicDist * 160;
   arenaCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
   arenaCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
-  arenaCtx.lineWidth = 1;
+  arenaCtx.lineWidth = 3;
   arenaCtx.beginPath();
   arenaCtx.moveTo(robotState.x, robotState.y);
   arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.38, totalHeadAngle + 0.38);
@@ -90,41 +99,44 @@ function drawArena() {
   arenaCtx.shadowColor = robotState.ledColor;
   arenaCtx.shadowBlur = 30;
   arenaCtx.fillStyle = robotState.ledColor;
-  arenaCtx.fillRect(-22, -14, 44, 28);
+  arenaCtx.fillRect(-26, -16, 52, 32);
   arenaCtx.shadowBlur = 0;
 
   // Telaio Principale
   arenaCtx.fillStyle = '#0f172a';
   arenaCtx.strokeStyle = '#38bdf8';
-  arenaCtx.lineWidth = 2;
+  arenaCtx.lineWidth = 4;
   arenaCtx.beginPath();
-  arenaCtx.roundRect(-24, -16, 48, 32, 6);
+  arenaCtx.roundRect(-28, -18, 56, 36, 6);
   arenaCtx.fill();
   arenaCtx.stroke();
 
   // Indicatore dei 3 Sensori IR (Palline sul davanti: Nero=Sulla linea, Verde=Bianco)
   const irCols = robotState.irSensors.map(v => v === 0 ? '#00ff55' : '#475569');
-  arenaCtx.fillStyle = irCols[0]; arenaCtx.beginPath(); arenaCtx.arc(20, -10, 3, 0, Math.PI * 2); arenaCtx.fill(); // Sinistro
-  arenaCtx.fillStyle = irCols[1]; arenaCtx.beginPath(); arenaCtx.arc(20, 0, 3, 0, Math.PI * 2); arenaCtx.fill();   // Centro
-  arenaCtx.fillStyle = irCols[2]; arenaCtx.beginPath(); arenaCtx.arc(20, 10, 3, 0, Math.PI * 2); arenaCtx.fill();  // Destro
+  arenaCtx.fillStyle = irCols[0]; arenaCtx.beginPath(); arenaCtx.arc(24, -12, 4, 0, Math.PI * 2); arenaCtx.fill(); // Sinistro
+  arenaCtx.fillStyle = irCols[1]; arenaCtx.beginPath(); arenaCtx.arc(24, 0, 4, 0, Math.PI * 2); arenaCtx.fill();   // Centro
+  arenaCtx.fillStyle = irCols[2]; arenaCtx.beginPath(); arenaCtx.arc(24, 12, 4, 0, Math.PI * 2); arenaCtx.fill();  // Destro
 
   // Ruote 4WD
   arenaCtx.fillStyle = '#334155';
-  arenaCtx.fillRect(-20, -22, 14, 6);
-  arenaCtx.fillRect(6, -22, 14, 6);
-  arenaCtx.fillRect(-20, 16, 14, 6);
-  arenaCtx.fillRect(6, 16, 14, 6);
+  arenaCtx.fillRect(-24, -26, 16, 8);
+  arenaCtx.fillRect(8, -26, 16, 8);
+  arenaCtx.fillRect(-24, 18, 16, 8);
+  arenaCtx.fillRect(8, 18, 16, 8);
 
   // Torretta Pan-Tilt e Telecamera
   arenaCtx.save();
   arenaCtx.rotate(robotState.panAngle * Math.PI / 180);
   arenaCtx.fillStyle = '#00f0ff';
   arenaCtx.beginPath();
-  arenaCtx.arc(0, 0, 10, 0, Math.PI * 2);
+  arenaCtx.arc(0, 0, 12, 0, Math.PI * 2);
   arenaCtx.fill();
   arenaCtx.fillStyle = '#000';
-  arenaCtx.fillRect(4, -4, 8, 8);
+  arenaCtx.fillRect(5, -5, 10, 10);
   arenaCtx.restore();
 
+  arenaCtx.restore();
+
+  // Ripristina la matrice di trasformazione originale
   arenaCtx.restore();
 }

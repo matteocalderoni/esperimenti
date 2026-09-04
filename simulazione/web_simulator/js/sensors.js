@@ -15,8 +15,8 @@ function updateSensors() {
   const headAngle = robotState.angle + (lookAheadPanDeg * Math.PI / 180);
 
   function castRayFrom(ox, oy, angle, maxDist = 320) {
-    const W = arenaCanvas ? arenaCanvas.width : 700;
-    const H = arenaCanvas ? arenaCanvas.height : 520;
+    const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+    const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
     for (let r = 5; r < maxDist; r += 4) {
       const rx = ox + Math.cos(angle) * r;
       const ry = oy + Math.sin(angle) * r;

@@ -1,5 +1,9 @@
 // simulazione/web_simulator/js/state.js
 
+// Dimensioni nominali fisiche dell'Arena (21m x 15.6m reale in pixel)
+const ARENA_WIDTH = 2100;
+const ARENA_HEIGHT = 1560;
+
 // Passo temporale di riferimento della simulazione: 60 fps.
 // Velocita' e sterzo sono grandezze fisiche (px/s, rad/s), non per frame:
 // il moto dipende dal tempo trascorso e non dal frame rate del browser.

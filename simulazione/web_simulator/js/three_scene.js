@@ -43,7 +43,9 @@ function initThreeFPV() {
 }
 
 function to3D(x2d, y2d) {
-  return { x: (x2d - 350) / 45, z: (y2d - 260) / 45 };
+  const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+  const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
+  return { x: (x2d - W / 2) / 100, z: (y2d - H / 2) / 100 };
 }
 
 function buildThreeKitchenFurniture() {
@@ -52,7 +54,7 @@ function buildThreeKitchenFurniture() {
 
   for (const w of arenaObjects.walls) {
     const p = to3D(w.x + w.w / 2, w.y + w.h / 2);
-    const geo = new THREE.BoxGeometry(w.w / 45, 1.3, w.h / 45);
+    const geo = new THREE.BoxGeometry(w.w / 100, 1.3, w.h / 100);
     let mat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.3 });
     if (w.asset) {
       texLoader.load(w.asset, function(tex) { mat.map = tex; mat.needsUpdate = true; });
@@ -64,8 +66,8 @@ function buildThreeKitchenFurniture() {
   }
 
   // 4 Muri perimetrali della Cucina (Nord, Sud, Ovest, Est)
-  [{ x: 0, z: -5.8, w: 15.6, d: 0.3 }, { x: 0, z: 5.8, w: 15.6, d: 0.3 },
-   { x: -7.8, z: 0, w: 0.3, d: 11.8 }, { x: 7.8, z: 0, w: 0.3, d: 11.8 }
+  [{ x: 0, z: -7.8, w: 21.0, d: 0.3 }, { x: 0, z: 7.8, w: 21.0, d: 0.3 },
+   { x: -10.5, z: 0, w: 0.3, d: 15.6 }, { x: 10.5, z: 0, w: 0.3, d: 15.6 }
   ].forEach(b => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(b.w, 1.6, b.d), borderMat);
     m.position.set(b.x, 0.8, b.z);

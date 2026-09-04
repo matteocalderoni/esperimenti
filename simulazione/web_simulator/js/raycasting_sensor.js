@@ -3,8 +3,8 @@
 
 function castSingleRay(startX, startY, angleRad, maxDistance) {
   if (maxDistance === undefined) maxDistance = 1050;
-  const W = (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.width)  ? arenaCanvas.width  : 2100;
-  const H = (typeof arenaCanvas !== 'undefined' && arenaCanvas && arenaCanvas.height) ? arenaCanvas.height : 1560;
+  const W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+  const H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
   const step = 4;
 
   for (var r = 10; r < maxDistance; r += step) {
