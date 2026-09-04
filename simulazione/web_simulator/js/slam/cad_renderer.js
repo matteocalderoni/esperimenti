@@ -65,8 +65,8 @@ function renderCadBlueprint(ctx, w, h) {
         var W = typeof getArenaW === 'function' ? getArenaW() : 700;
         var H = typeof getArenaH === 'function' ? getArenaH() : 520;
         var lmGx = Math.floor((lm.x / W) * slamMap.width), lmGy = Math.floor((lm.y / H) * slamMap.height);
-        var inside = (lmGx >= c.minX - 4 && lmGx <= c.maxX + 4 && lmGy >= c.minY - 4 && lmGy <= c.maxY + 4);
-        return inside || Math.hypot(lm.x - worldCX, lm.y - worldCY) < 110;
+        var inside = (lmGx >= c.minX - 1 && lmGx <= c.maxX + 1 && lmGy >= c.minY - 1 && lmGy <= c.maxY + 1);
+        return inside || Math.hypot(lm.x - worldCX, lm.y - worldCY) < 30;
       });
 
       var title = matchedLm ? (matchedLm.icon + ' ' + matchedLm.name) : ('Ostacolo #' + (idx + 1));
@@ -106,6 +106,8 @@ function renderCadBlueprint(ctx, w, h) {
       var hM = formatQuota(slamSpanMeters(geo.bounds.maxY - geo.bounds.minY + 1, 'y'));
       drawCadTickLineTheme(ctx, Math.max(26, bx1), 26, Math.min(w - 26, bx2), 26, 'Larghezza Arena: ' + wM, false, dark);
       drawCadTickLineTheme(ctx, 26, Math.max(26, by1), 26, Math.min(h - 26, by2), 'Altezza Arena: ' + hM, true, dark);
+      var propLbl = document.getElementById('blueprintProportionsLabel');
+      if (propLbl) propLbl.innerText = 'Proporzioni Reali: ' + wM + ' x ' + hM;
     }
   }
 

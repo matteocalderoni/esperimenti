@@ -1,6 +1,5 @@
-# robot_server/vision/vlm_inspector.py
-# Client VLM Open-Vocabulary Locale (Ollama Moondream) per Riconoscimento Generico di Oggetti ed Arredi
 import requests
+import re
 
 class VLMInspector:
     """
@@ -11,20 +10,19 @@ class VLMInspector:
         self.model = model
         self.timeout = timeout
         self.category_map = [
-            {"id": "piano_cottura", "keys": ["stove", "cooktop", "sink", "faucet", "cucina", "lavello", "piano_cottura", "counter", "countertop", "oven", "range", "burner"], "display": "Piano Cottura / Lavello", "icon": "🍳", "type": "KITCHEN"},
-            {"id": "frigorifero", "keys": ["refrigerator", "fridge", "frigorifero", "cooler", "freezer", "dispenser"], "display": "Frigorifero", "icon": "🧊", "type": "APPLIANCE"},
-            {"id": "tavolo_pranzo", "keys": ["desk", "table", "dining", "tavolo", "scrivania", "board", "surface"], "display": "Tavolo / Scrivania", "icon": "🍽️", "type": "TABLE"},
-            {"id": "credenza", "keys": ["cabinet", "bookcase", "shelf", "cupboard", "sideboard", "libreria", "mobile", "unit", "dresser", "stand", "chest"], "display": "Mobile / Credenza", "icon": "🗄️", "type": "STORAGE"},
-            {"id": "penisola", "keys": ["island", "bar stool", "peninsula", "bancone", "sgabello", "bar"], "display": "Penisola / Bancone", "icon": "🍸", "type": "COUNTER"},
-            {"id": "divano", "keys": ["sofa", "couch", "armchair", "bench", "divano", "poltrona"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
+            {"id": "tavolo_pranzo", "keys": ["dining table", "kitchen table", "dining", "table", "tavolo", "scrivania", "desk"], "display": "Tavolo da Pranzo", "icon": "🍽️", "type": "TABLE"},
+            {"id": "piano_cottura", "keys": ["cooktop", "stove", "sink", "faucet", "cucina", "lavello", "piano cottura", "countertop", "oven", "range", "burner"], "display": "Piano Cottura / Lavello", "icon": "🍳", "type": "KITCHEN"},
+            {"id": "frigorifero", "keys": ["refrigerator", "fridge", "frigorifero", "cooler", "freezer"], "display": "Frigorifero", "icon": "🧊", "type": "APPLIANCE"},
+            {"id": "credenza", "keys": ["sideboard", "credenza", "cabinet", "cupboard", "bookcase", "shelf", "libreria", "dresser"], "display": "Mobile / Credenza", "icon": "🗄️", "type": "STORAGE"},
+            {"id": "penisola", "keys": ["kitchen island", "peninsula", "bar stool", "bancone", "sgabello", "breakfast bar"], "display": "Penisola / Bancone", "icon": "🍸", "type": "COUNTER"},
+            {"id": "divano", "keys": ["sofa", "couch", "armchair", "divano", "poltrona"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
             {"id": "letto", "keys": ["bed", "mattress", "letto"], "display": "Letto", "icon": "🛏️", "type": "BED"},
             {"id": "sedia", "keys": ["chair", "stool", "sedia"], "display": "Sedia / Sgabello", "icon": "🪑", "type": "CHAIR"},
-            {"id": "tv", "keys": ["tv", "television", "monitor", "screen", "schermo"], "display": "TV / Schermo", "icon": "📺", "type": "SCREEN"},
-            {"id": "porta", "keys": ["door", "doorway", "entrance", "porta", "varco"], "display": "Porta / Ingresso", "icon": "🚪", "type": "DOOR"},
-            {"id": "pianta", "keys": ["plant", "flower", "pianta"], "display": "Pianta", "icon": "🪴", "type": "PLANT"}
+            {"id": "tv", "keys": ["television", "tv", "monitor", "screen", "schermo"], "display": "TV / Schermo", "icon": "📺", "type": "SCREEN"},
+            {"id": "porta", "keys": ["doorway", "door", "entrance", "porta", "varco"], "display": "Porta / Ingresso", "icon": "🚪", "type": "DOOR"},
+            {"id": "pianta", "keys": ["houseplant", "plant", "flower", "pianta"], "display": "Pianta", "icon": "🪴", "type": "PLANT"}
         ]
         self.catalog = self.category_map
-        self.ignore_words = ["wall", "floor", "room", "render", "photo", "image", "urn", "space", "nothing", "background", "ground", "tile"]
 
     def is_available(self):
         try:
@@ -36,8 +34,10 @@ class VLMInspector:
     def _match_category(self, raw_text):
         txt = raw_text.lower().strip()
         for cat in self.category_map:
-            if any(k in txt for k in cat["keys"]):
-                return cat
+            for k in cat["keys"]:
+                pattern = r'\b' + re.escape(k) + r'\b'
+                if re.search(pattern, txt):
+                    return cat
         return None
 
     def analyze_frame(self, base64_image_data):
@@ -47,7 +47,11 @@ class VLMInspector:
         if ',' in base64_image_data:
             base64_image_data = base64_image_data.split(',', 1)[1]
 
-        prompt_text = "Describe the main object or furniture in the center of this image in 2 to 4 words."
+        prompt_text = (
+            "What main object or furniture is in the center of this image? "
+            "Choose from: dining table, refrigerator, stove, cabinet, peninsula, sofa, bed, door, chair. "
+            "Output only the concise object name."
+        )
         payload = {
             "model": self.model,
             "prompt": prompt_text,
@@ -71,10 +75,12 @@ class VLMInspector:
                                 "confidence": 0.95,
                                 "description": raw_text
                             }],
-                            "status": "ok"
+                            "status": "ok",
+                            "raw": raw_text
                         }
                 return {"landmarks": [], "status": "unrecognized", "raw": raw_text}
         except requests.exceptions.RequestException as e:
             return {"landmarks": [], "status": "ollama_offline", "error": str(e)}
 
         return {"landmarks": [], "status": "empty"}
+

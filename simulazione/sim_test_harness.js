@@ -88,7 +88,7 @@ function loadSimFromIndex() {
 
   return loadSim(files,
     ['robotState', 'arenaObjects', 'slamMap', 'updatePhysics', 'initSlamGrid',
-     'slamGridToWorld', 'updateSensors', 'jsBehaviors'],
+     'slamGridToWorld', 'updateSensors', 'jsBehaviors', 'solidifyClusterInteriors', 'findSlamClusters'],
     { arenaCanvas: fakeCanvas(446, 438), fetch: () => Promise.reject(new Error('offline')) });
 }
 

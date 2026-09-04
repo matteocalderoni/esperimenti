@@ -8,3 +8,5 @@ __pycache__/
 # Ambiente virtuale Python (locale, legato alla macchina)
 venv/
 .venv/
+# Temporary scratch files
+scratch/

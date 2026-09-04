@@ -11,8 +11,8 @@ function castSingleRay(startX, startY, angleRad, maxDistance) {
     var rx = startX + Math.cos(angleRad) * r;
     var ry = startY + Math.sin(angleRad) * r;
 
-    // Bordi arena dinamici
-    if (rx < 8 || rx > W - 8 || ry < 8 || ry > H - 8) {
+    // Bordi arena dinamici (bordo muro reale = 12 px)
+    if (rx < 12 || rx > W - 12 || ry < 12 || ry > H - 12) {
       return { dist: r / 160.0, hitX: rx, hitY: ry, hit: true };
     }
 

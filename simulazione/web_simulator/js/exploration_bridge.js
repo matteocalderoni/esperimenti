@@ -21,36 +21,27 @@ function findVisibleObstacleCoord(originX, originY, angleRad) {
 }
 
 function fillSolidFurnitureCells(coordX, coordY, angleRad, furnName) {
-  if (!slamMap || !slamMap.grid) return;
-  var W = getArenaW(), H = getArenaH();
-  var centerX = coordX + Math.cos(angleRad) * 15;
-  var centerY = coordY + Math.sin(angleRad) * 15;
-  var cgx = Math.floor((centerX / W) * slamMap.width), cgy = Math.floor((centerY / H) * slamMap.height);
-  var name = (furnName || '').toLowerCase();
-  var rx = 4, ry = 4;
-  if (name.includes('tavolo') || name.includes('scrivania') || name.includes('letto')) { rx = 6; ry = 5; }
-  else if (name.includes('cottura') || name.includes('piano') || name.includes('divano')) { rx = 7; ry = 4; }
-  else if (name.includes('penisola') || name.includes('mobile')) { rx = 4; ry = 6; }
-
-  for (var dy = -ry; dy <= ry; dy++) {
-    for (var dx = -rx; dx <= rx; dx++) {
-      var gx = cgx + dx, gy = cgy + dy;
-      if (gx >= 0 && gx < slamMap.width && gy >= 0 && gy < slamMap.height) {
-        if (slamMap.grid[gy][gx] === -1 || slamMap.grid[gy][gx] === 0) slamMap.grid[gy][gx] = 1;
-      }
-    }
-  }
-  if (typeof updateSlamStats === 'function') updateSlamStats();
+  // Il VLM assegna solo etichette semantiche e NON deve inventare ostacoli sintetici nello spazio libero.
+  return;
 }
 
 async function triggerStationaryVlmInspection() {
   if (vlmInspecting) return;
+
+  var headAngleRad = robotState.angle + (robotState.panAngle * Math.PI / 180);
+  var targetCoord = findVisibleObstacleCoord(robotState.x, robotState.y, headAngleRad);
+
+  // 1. Distance Gate: scarta se l'ostacolo e' a meno di 45cm (parete piatta da vicino) o oltre 2.20m
+  if (targetCoord.distPx < 70 || targetCoord.distPx > 350) {
+    console.log('[VLM Gate] Ispezione annullata: ostacolo fuori range ideale (' + (targetCoord.distPx/160).toFixed(2) + 'm)');
+    return;
+  }
+
   robotState.speed = 0; robotState.steering = 0;
 
   var snapshot = typeof getThreeFPSnapshot === 'function' ? getThreeFPSnapshot() : null;
   if (!snapshot || !snapshot.includes(',')) return;
 
-  var headAngleRad = robotState.angle + (robotState.panAngle * Math.PI / 180);
   var freezePose = {
     x: robotState.x, y: robotState.y, angle: robotState.angle, panAngle: robotState.panAngle,
     totalHead: headAngleRad
@@ -76,8 +67,8 @@ async function triggerStationaryVlmInspection() {
 
       if (resData.landmarks && resData.landmarks.length > 0) {
         var lm = resData.landmarks[0];
-        var targetCoord = findVisibleObstacleCoord(freezePose.x, freezePose.y, freezePose.totalHead);
         if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
+        if (!slamMap.vlmCandidateLandmarks) slamMap.vlmCandidateLandmarks = [];
         var nameToRegister = lm.display || lm.name;
 
         var W = typeof getArenaW === 'function' ? getArenaW() : 700;
@@ -87,27 +78,55 @@ async function triggerStationaryVlmInspection() {
 
         var clusters = (typeof findSlamClusters === 'function') ? findSlamClusters(true) : [];
         var targetCluster = clusters.find(function(c) {
-          return hitGx >= c.minX - 4 && hitGx <= c.maxX + 4 && hitGy >= c.minY - 4 && hitGy <= c.maxY + 4;
+          return hitGx >= c.minX - 2 && hitGx <= c.maxX + 2 && hitGy >= c.minY - 2 && hitGy <= c.maxY + 2;
         });
 
         var anchorX = targetCluster ? (((targetCluster.minX + targetCluster.maxX) / 2 / slamMap.width) * W) : targetCoord.x;
         var anchorY = targetCluster ? (((targetCluster.minY + targetCluster.maxY) / 2 / slamMap.height) * H) : targetCoord.y;
 
-        // Cerca se esiste gia' un landmark registrato precisamente per questo specifico cluster sensore
-        var existingIdx = slamMap.semanticLandmarks.findIndex(function(item) {
-          var dist = Math.hypot(item.x - anchorX, item.y - anchorY);
-          return dist < 40;
+        // 2. Wall Rejection Filter: scarta etichette VLM proiettate dentro i muri perimetrali esterni
+        if (anchorX <= 18 || anchorX >= W - 18 || anchorY <= 18 || anchorY >= H - 18) {
+          console.log('[VLM Filter] Etichetta "' + nameToRegister + '" scartata: cade nel muro perimetrale.');
+          return;
+        }
+
+        // Multi-View Consensus: Cerca nelle osservazioni candidate precedenti
+        var candidateIdx = slamMap.vlmCandidateLandmarks.findIndex(function(cand) {
+          return Math.hypot(cand.x - anchorX, cand.y - anchorY) < 35;
         });
 
-        var newEntry = {
-          x: anchorX, y: anchorY, name: nameToRegister, icon: lm.icon || '📦',
-          type: lm.type || 'GENERIC', confidence: lm.confidence || 0.95, ts: Date.now()
-        };
+        if (candidateIdx >= 0) {
+          var cand = slamMap.vlmCandidateLandmarks[candidateIdx];
+          cand.count += 1;
+          cand.x = (cand.x + anchorX) / 2;
+          cand.y = (cand.y + anchorY) / 2;
+          if (cand.name === nameToRegister || cand.type === lm.type) {
+            cand.confidence = Math.min(0.99, cand.confidence + 0.15);
+          } else {
+            // Sovrascrivi il nome se la nuova osservazione e' piu' recente/sicura
+            cand.name = nameToRegister;
+            cand.icon = lm.icon || '📦';
+          }
 
-        if (existingIdx >= 0) slamMap.semanticLandmarks[existingIdx] = newEntry;
-        else slamMap.semanticLandmarks.push(newEntry);
-
-        fillSolidFurnitureCells(anchorX, anchorY, freezePose.totalHead, nameToRegister);
+          // Se raggiunge almeno 2 osservazioni concordanti o confidenza elevata, promuovi a landmark ufficiale
+          if (cand.count >= 2) {
+            var existingOfficialIdx = slamMap.semanticLandmarks.findIndex(function(item) {
+              return Math.hypot(item.x - cand.x, item.y - cand.y) < 30;
+            });
+            var newEntry = {
+              x: cand.x, y: cand.y, name: cand.name, icon: cand.icon,
+              type: cand.type, confidence: cand.confidence, ts: Date.now()
+            };
+            if (existingOfficialIdx >= 0) slamMap.semanticLandmarks[existingOfficialIdx] = newEntry;
+            else slamMap.semanticLandmarks.push(newEntry);
+          }
+        } else {
+          // Primo scatto: registra come candidato provvisorio (non compare ancora in piantina)
+          slamMap.vlmCandidateLandmarks.push({
+            x: anchorX, y: anchorY, name: nameToRegister, icon: lm.icon || '📦',
+            type: lm.type || 'GENERIC', confidence: 0.70, count: 1, ts: Date.now()
+          });
+        }
       }
     }
   } catch (e) {

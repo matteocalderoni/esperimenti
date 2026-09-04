@@ -27,7 +27,7 @@ function test_la_cella_ha_le_misure_del_canvas() {
 
   assert.ok(Math.abs(c.w - attesoW) < 1e-6, `Larghezza cella ${c.w} invece di ${attesoW}`);
   assert.ok(Math.abs(c.h - attesoH) < 1e-6, `Altezza cella ${c.h} invece di ${attesoH}`);
-  assert.ok(Math.abs(c.w - c.h) > 1e-6, 'La cella non e\' quadrata: le due misure devono differire');
+  assert.ok(Math.abs(c.w - c.h) < 0.001, 'La cella deve essere isotropa e quadrata (differenza < 1mm)');
   console.log(`   ✅ cella ${(c.w * 100).toFixed(2)} × ${(c.h * 100).toFixed(2)} cm.`);
 }
 
