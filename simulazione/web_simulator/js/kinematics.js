@@ -18,10 +18,10 @@ function updateKinematics(dt) {
   const margin = 35;
   const arenaW = (typeof getArenaW === 'function') ? getArenaW() : 2100;
   const arenaH = (typeof getArenaH === 'function') ? getArenaH() : 1560;
-  if (robotState.x < margin) { robotState.x = margin; robotState.speed = -30; robotState.angle += 6 * dt; }
-  if (robotState.x > arenaW - margin) { robotState.x = arenaW - margin; robotState.speed = -30; robotState.angle += 6 * dt; }
-  if (robotState.y < margin) { robotState.y = margin; robotState.speed = -30; robotState.angle += 6 * dt; }
-  if (robotState.y > arenaH - margin) { robotState.y = arenaH - margin; robotState.speed = -30; robotState.angle += 6 * dt; }
+  if (robotState.x < margin) { robotState.x = margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
+  if (robotState.x > arenaW - margin) { robotState.x = arenaW - margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
+  if (robotState.y < margin) { robotState.y = margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
+  if (robotState.y > arenaH - margin) { robotState.y = arenaH - margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
 
   // 3. Cuscinetto di sicurezza soft di vicinanza (Soft Proximity Safety Buffer 18px)
   const carR = CAR_RADIUS_PX;

@@ -58,51 +58,26 @@ function runExplorationBehavior() {
     if (robotState.panAngle >= 80 || slamMap.scanStep >= 34) {
       robotState.panAngle = 0; slamMap.scanStep = 0;
       lastVlmScanPos = { x: robotState.x, y: robotState.y };
-      if ((slamMap.fsmState === 'INITIAL_SCAN' || slamMap.fsmState === 'HEAD_SCAN_1') && isClearForRotation()) {
-        slamMap.rotateAngleLeft = Math.PI;
-        slamMap.fsmState = 'ROTATE_180';
-      } else {
-        slamMap.fsmState = 'FIND_FRONTIERS';
-      }
-    }
-    return;
-  }
-
-  // 2. ROTATE_180: Rotazione controllata del telaio solo se c'è spazio libero
-  if (slamMap.fsmState === 'ROTATE_180') {
-    robotState.speed = 0;
-    var stepAngle = 4.8;
-    robotState.steering = stepAngle;
-    slamMap.rotateAngleLeft = (slamMap.rotateAngleLeft || Math.PI) - stepAngle * SIM_DT;
-    if (typeof scanAllRays === 'function') scanAllRays();
-
-    if (slamMap.rotateAngleLeft <= 0) {
-      robotState.steering = 0; slamMap.scanStep = 0; slamMap.rotateAngleLeft = 0;
-      slamMap.fsmState = 'HEAD_SCAN_2';
-    }
-    return;
-  }
-
-  // 3. HEAD_SCAN_2: Seconda scansione panoramica dopo la rotazione
-  if (slamMap.fsmState === 'HEAD_SCAN_2') {
-    robotState.speed = 0; robotState.steering = 0;
-    if (slamMap.scanStep === 0) robotState.panAngle = -80;
-    robotState.panAngle += 5; slamMap.scanStep++;
-    if (typeof scanHeadFan === 'function') scanHeadFan(robotState.panAngle); else scanAllRays();
-
-    if ((robotState.panAngle === -60 || robotState.panAngle === 0 || robotState.panAngle === 60) && typeof triggerStationaryVlmInspection === 'function') {
-      triggerStationaryVlmInspection();
-    }
-
-    if (robotState.panAngle >= 80 || slamMap.scanStep >= 34) {
-      robotState.panAngle = 0; slamMap.scanStep = 0;
-      lastVlmScanPos = { x: robotState.x, y: robotState.y };
       slamMap.fsmState = 'FIND_FRONTIERS';
     }
     return;
   }
 
-  // 4. NAVIGATE: Movimento verso la frontiera + Scansioni intermedie ogni 90px
+  // 2. ROTATE_180: Passaggio diretto senza scatti (i sensori coprono già 360°)
+  if (slamMap.fsmState === 'ROTATE_180') {
+    robotState.steering = 0;
+    slamMap.fsmState = 'FIND_FRONTIERS';
+    return;
+  }
+
+  // 3. HEAD_SCAN_2: Passaggio diretto
+  if (slamMap.fsmState === 'HEAD_SCAN_2') {
+    robotState.panAngle = 0; slamMap.scanStep = 0;
+    slamMap.fsmState = 'FIND_FRONTIERS';
+    return;
+  }
+
+  // 4. NAVIGATE: Movimento verso la frontiera + Scansioni intermedie distribuite
   if (slamMap.fsmState === 'NAVIGATE') {
     scanAllRays();
     if (typeof navigateSlamPath === 'function') navigateSlamPath();
@@ -131,7 +106,7 @@ function runExplorationBehavior() {
       slamMap.fsmState = 'NAVIGATE';
     } else {
       slamMap.stuckCounter++;
-      if (slamMap.stuckCounter > 3 || slamMap.stats.exploredPct >= 99) {
+      if (slamMap.stuckCounter >= 2 || slamMap.stats.exploredPct >= 78) {
         slamMap.stuckCounter = 0; slamMap.fsmState = 'COMPLETE';
       } else {
         slamMap.scanStep = 0; slamMap.fsmState = 'HEAD_SCAN';
