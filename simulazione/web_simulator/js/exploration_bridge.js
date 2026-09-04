@@ -25,10 +25,79 @@ function fillSolidFurnitureCells(coordX, coordY, angleRad, furnName) {
   return;
 }
 
+function getClusterKey(cX, cY) {
+  return Math.round(cX / 60) + '_' + Math.round(cY / 60);
+}
+
+function getClusterAttemptCount(cX, cY) {
+  if (!slamMap) return 0;
+  if (!slamMap.clusterTracking) slamMap.clusterTracking = {};
+  var key = getClusterKey(cX, cY);
+  return (slamMap.clusterTracking[key] && slamMap.clusterTracking[key].attempts) || 0;
+}
+
+function isClusterAbandoned(cX, cY) {
+  if (!slamMap) return false;
+  if (!slamMap.clusterTracking) slamMap.clusterTracking = {};
+  var key = getClusterKey(cX, cY);
+  return (slamMap.clusterTracking[key] && slamMap.clusterTracking[key].abandoned === true);
+}
+
+function recordClusterAttempt(cX, cY) {
+  if (!slamMap) return;
+  if (!slamMap.clusterTracking) slamMap.clusterTracking = {};
+  var key = getClusterKey(cX, cY);
+  if (!slamMap.clusterTracking[key]) {
+    slamMap.clusterTracking[key] = { attempts: 0, lastTime: 0, abandoned: false };
+  }
+  var rec = slamMap.clusterTracking[key];
+  rec.attempts += 1;
+  rec.lastTime = Date.now();
+
+  if (rec.attempts >= 3) {
+    rec.abandoned = true;
+    registerUnknownObstacleLandmark(cX, cY);
+  }
+}
+
+function registerUnknownObstacleLandmark(cX, cY) {
+  if (!slamMap) return;
+  if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
+
+  var existingIdx = slamMap.semanticLandmarks.findIndex(function(lm) {
+    return Math.hypot(lm.x - cX, lm.y - cY) < 65;
+  });
+
+  var entry = {
+    id: 'obj_unknown_' + Math.round(cX) + '_' + Math.round(cY),
+    type: 'UNKNOWN',
+    name: '📦 Ostacolo Sconosciuto',
+    label: '📦 Ostacolo Sconosciuto',
+    display: '📦 Ostacolo Sconosciuto',
+    icon: '📦',
+    x: cX,
+    y: cY,
+    w: 200,
+    h: 200,
+    vlmVerified: true,
+    vlmAbandoned: true,
+    isStaticWall: false
+  };
+
+  if (existingIdx >= 0) {
+    if (!slamMap.semanticLandmarks[existingIdx].vlmVerified) {
+      slamMap.semanticLandmarks[existingIdx] = entry;
+    }
+  } else {
+    slamMap.semanticLandmarks.push(entry);
+  }
+}
+
 function isClusterVlmVerified(cX, cY) {
   if (!slamMap || !slamMap.semanticLandmarks) return false;
+  if (isClusterAbandoned(cX, cY)) return true;
   return slamMap.semanticLandmarks.some(function(lm) {
-    return Math.hypot(lm.x - cX, lm.y - cY) < 55 && lm.vlmVerified === true;
+    return Math.hypot(lm.x - cX, lm.y - cY) < 65 && lm.vlmVerified === true;
   });
 }
 

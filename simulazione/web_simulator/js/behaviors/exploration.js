@@ -26,26 +26,24 @@ function runExplorationBehavior() {
       var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
       var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
       if (cX <= 20 || cX >= W - 20 || cY <= 20 || cY >= H - 20) return false;
-      
-      if (c.vlmAbandoned === true) return false;
+
+      if (typeof isClusterAbandoned === 'function' && isClusterAbandoned(cX, cY)) return false;
       if (typeof isClusterVlmVerified === 'function' && isClusterVlmVerified(cX, cY)) return false;
 
-      var lastAttempt = c.lastVlmAttemptTime || 0;
-      var attempts = c.vlmAttempts || 0;
+      var attempts = (typeof getClusterAttemptCount === 'function') ? getClusterAttemptCount(cX, cY) : 0;
+      if (attempts >= 3) return false;
 
-      if (attempts >= 3) {
-        c.vlmAbandoned = true;
-        return false;
-      }
+      var key = (typeof getClusterKey === 'function') ? getClusterKey(cX, cY) : '';
+      var lastAttempt = (slamMap.clusterTracking && slamMap.clusterTracking[key]) ? slamMap.clusterTracking[key].lastTime : 0;
 
-      // Cooldown di 2.5s tra tentativi successivi e rinuncia dopo 3 tentativi per ostacolo non riconosciuto
-      return (nowTime - lastAttempt > 2500) && (attempts < 3);
+      // Cooldown di 2.5s tra tentativi successivi e rinuncia dopo 3 tentativi
+      return (nowTime - lastAttempt > 2500);
     });
 
     if (unverifiedCluster) {
-      unverifiedCluster.lastVlmAttemptTime = nowTime;
-      unverifiedCluster.vlmAttempts = (unverifiedCluster.vlmAttempts || 0) + 1;
-      if (unverifiedCluster.vlmAttempts >= 3) unverifiedCluster.vlmAbandoned = true;
+      var uCX = ((unverifiedCluster.minX + unverifiedCluster.maxX) / 2 / slamMap.width) * W;
+      var uCY = ((unverifiedCluster.minY + unverifiedCluster.maxY) / 2 / slamMap.height) * H;
+      if (typeof recordClusterAttempt === 'function') recordClusterAttempt(uCX, uCY);
       triggerStationaryVlmInspection(unverifiedCluster);
     }
   }
