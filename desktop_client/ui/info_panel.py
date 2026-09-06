@@ -41,9 +41,12 @@ class InfoPanel:
         self.lbl_ram.place(x=680, y=10)
         
         self.lbl_default_ip = tk.Label(self.card, width=20, text='IP Predefinito', fg=settings.color_text, bg=settings.color_btn, anchor='w', padx=8)
-        self.lbl_default_ip.place(x=680, y=40)
+        self.is_connecting = False
 
-    def on_connect_click(self, event):
+    def on_connect_click(self, event=None):
+        if self.is_connecting or settings.ip_stu == 0:
+            return
+        self.is_connecting = True
         ip = self.entry_ip.get().strip()
         if ":" in ip:
             ip = ip.split(":")[0]  # Rimuove l'eventuale porta inserita per errore (es. :5000)
@@ -59,8 +62,13 @@ class InfoPanel:
         """Aggiorna lo stato della connessione visivo."""
         self.lbl_status.config(text=text, bg=bg_color)
         if text == 'Connesso':
+            self.is_connecting = False
             self.lbl_default_ip.config(text=f'IP: {self.entry_ip.get()}')
             self.entry_ip.config(state='disabled')
             self.btn_connect.config(state='disabled')
+        elif text == 'Disconnesso':
+            self.is_connecting = False
+            self.entry_ip.config(state='normal')
+            self.btn_connect.config(state='normal')
         elif text.startswith('Connessione'):
             self.lbl_default_ip.config(text=f'Predefinito: {self.entry_ip.get()}')

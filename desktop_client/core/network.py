@@ -91,27 +91,36 @@ def connection_loop(sock, callbacks):
                 callbacks['connection']('Disconnesso', '#F44336')
             break
 
+connection_lock = thread.Lock()
+
 def socket_connect(ip_address, callbacks):
     """Effettua il tentativo di connessione socket TCP (fino a 5 tentativi)."""
-    SERVER_IP = ip_address
-    SERVER_PORT = 10223
-    ADDR = (SERVER_IP, SERVER_PORT)
-    
-    settings.ip_stu = 1
-    
-    for i in range(1, 6):
-        if settings.ip_stu == 1:
+    if not connection_lock.acquire(blocking=False):
+        print("⚠️ Connessione già in corso, tentativo ignorato.")
+        return False
+
+    try:
+        if settings.ip_stu == 0:
+            print("ℹ️ Già connesso al server.")
+            return True
+
+        SERVER_IP = ip_address
+        SERVER_PORT = 10223
+        ADDR = (SERVER_IP, SERVER_PORT)
+        
+        settings.ip_stu = 1
+        
+        for i in range(1, 6):
             print(f"Connessione al server @ {SERVER_IP}:{SERVER_PORT} (Tentativo {i}/5)...")
             if 'connection' in callbacks:
                 callbacks['connection'](f"Connessione {i}/5", '#FF8F00')
             try:
-                # Ricrea sempre un nuovo oggetto socket per ciascun tentativo
                 sock = socket(AF_INET, SOCK_STREAM)
                 sock.settimeout(3.0)
                 sock.connect(ADDR)
                 sock.settimeout(None)
                 settings.tcpClicSock = sock
-                print("Connesso!")
+                print("Connesso con successo!")
                 
                 settings.ip_stu = 0 # 0 = Connesso
                 settings.save_ip(SERVER_IP)
@@ -119,7 +128,6 @@ def socket_connect(ip_address, callbacks):
                 if 'connection' in callbacks:
                     callbacks['connection']('Connesso', '#558B2F')
                     
-                # Avvia i thread di ascolto e polling
                 conn_thread = thread.Thread(target=connection_loop, args=(settings.tcpClicSock, callbacks))
                 conn_thread.setDaemon(True)
                 conn_thread.start()
@@ -128,14 +136,14 @@ def socket_connect(ip_address, callbacks):
                 info_thread.setDaemon(True)
                 info_thread.start()
                 
-                # Ritorna successo
                 return True
             except Exception as e:
                 print(f"Connessione fallita tentativo {i}: {e}")
-                time.sleep(1)
-                
-    # Se arriviamo qui, tutti i tentativi sono falliti
-    settings.ip_stu = 1
-    if 'connection' in callbacks:
-        callbacks['connection']('Disconnesso', '#F44336')
-    return False
+                time.sleep(0.5)
+                    
+        settings.ip_stu = 1
+        if 'connection' in callbacks:
+            callbacks['connection']('Disconnesso', '#F44336')
+        return False
+    finally:
+        connection_lock.release()
