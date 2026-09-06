@@ -443,3 +443,14 @@ class OccupancyGrid:
             'obstacle_cells': int(obstacles),
             'unknown_cells': int(total - explored)
         }
+
+    def to_dict(self):
+        return {
+            'width': self.width,
+            'height': self.height,
+            'resolution': self.resolution,
+            'grid': self.grid.tolist(),
+            'semantic_objects': self.semantic_objects,
+            'stats': self.get_stats()
+        }
+

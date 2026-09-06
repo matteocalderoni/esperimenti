@@ -26,17 +26,16 @@ class FeaturePanel:
         # Mappa dei comandi on/off associati a ciascun pulsante funzione
         funcs = {
             'RadarScan': ('scan', 'stopCV'),
-            'FindColor': ('findColor', 'stopCV'),
-            'MotionGet': ('motionGet', 'stopCV'),
-            'Police': ('police', 'policeOff'),
             'Automatic': ('automatic', 'automaticOff'),
+            'FindColor': ('findColor', 'stopCV'),
             'TrackLine': ('trackLine', 'trackLineOff'),
-            'TrackLight': ('trackLight', 'trackLightOff'),
-            'KeepDistance': ('keepDistance', 'keepDistanceOff')
+            'MotionGet': ('motionGet', 'stopCV'),
+            'SLAM Map': ('start_slam', 'stopCV'),
+            'Police': ('police', 'policeOff'),
+            'VLM Tour': ('vlmTour', 'stopCV')
         }
 
         def on_func_press(name, on_cmd, off_cmd):
-            # Se la funzione corrente è spenta, la accendiamo
             if settings.function_stu == 0:
                 self.send(on_cmd)
                 settings.function_stu = 1
@@ -49,12 +48,22 @@ class FeaturePanel:
             col = i // 4
             row = i % 4
             px = x + 20 + (col * 150)
-            py = y + 30 + (row * 50)
+            py = y + 25 + (row * 48)
             
             btn = tk.Button(self.card_auto, width=11, text=name, fg=settings.color_btn_text, bg=settings.color_btn, relief='ridge')
             btn.place(x=px, y=py)
             btn.bind('<ButtonPress-1>', lambda e, n=name, on=on_cmd, off=off_cmd: on_func_press(n, on, off))
             self.func_buttons[name] = btn
+
+        # Pulsante dedicato View Blueprint CAD
+        btn_bp = tk.Button(self.card_auto, width=28, text='📐 View Blueprint CAD', fg='#000000', bg='#00F2FE', relief='ridge', font=('Helvetica', 9, 'bold'))
+        btn_bp.place(x=x + 20, y=y + 225)
+        btn_bp.bind('<ButtonPress-1>', lambda e: self.open_blueprint())
+
+    def open_blueprint(self):
+        import webbrowser
+        ip = getattr(settings, 'target_ip', '127.0.0.1')
+        webbrowser.open(f"http://{ip}:5000/blueprint")
 
     def build_switch_buttons(self, x, y):
         def on_switch_press(num):

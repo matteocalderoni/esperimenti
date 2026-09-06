@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planimetria Isometrica & Tour VLM | Adeept 4WD Smart Car</title>
+    <style>
+        :root {
+            --bg-color: #0b132b;
+            --panel-bg: rgba(28, 37, 65, 0.85);
+            --accent-color: #00f2fe;
+            --text-color: #ffffff;
+            --text-muted: #8d99ae;
+            --border-color: rgba(0, 242, 254, 0.3);
+            --grid-line: rgba(0, 242, 254, 0.1);
+            --wall-color: #00f2fe;
+            --free-color: rgba(0, 242, 254, 0.05);
+            --unknown-color: #0d1b2a;
+        }
+
+        body.white-cad {
+            --bg-color: #f8f9fa;
+            --panel-bg: rgba(255, 255, 255, 0.95);
+            --accent-color: #0056b3;
+            --text-color: #212529;
+            --text-muted: #6c757d;
+            --border-color: #ced4da;
+            --grid-line: rgba(0, 0, 0, 0.08);
+            --wall-color: #212529;
+            --free-color: #ffffff;
+            --unknown-color: #e9ecef;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 24px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-area h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .controls-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+        }
+
+        .btn-danger {
+            background: rgba(255, 77, 77, 0.2);
+            color: #ff4d4d;
+            border-color: rgba(255, 77, 77, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: #ff4d4d;
+            color: #fff;
+        }
+
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .viewport-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            background: radial-gradient(circle at center, rgba(0,242,254,0.03) 0%, transparent 70%);
+        }
+
+        #blueprintCanvas {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--unknown-color);
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .side-panel {
+            width: 380px;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+
+        .inspection-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+        }
+
+        .inspection-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .inspection-card img {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .inspection-card-body {
+            padding: 12px;
+        }
+
+        .inspection-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .inspection-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-area">
+            <h1>📐 Smart Car Blueprint CAD</h1>
+            <div class="status-badge" id="connStatus">
+                <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00ff88;"></span>
+                <span>Connesso (WS)</span>
+            </div>
+        </div>
+        <div class="controls-header">
+            <button class="btn btn-primary" onclick="sendCommand('start_slam')">🗺️ Fase 1: SLAM Map</button>
+            <button class="btn" onclick="sendCommand('start_vlm_tour')">👁️ Fase 2: Tour VLM</button>
+            <button class="btn btn-danger" onclick="sendCommand('stop_all')">🛑 Arresto</button>
+            <button class="btn" onclick="toggleTheme()">🎨 Tema: CAD / Blueprint</button>
+            <button class="btn" onclick="exportPNG()">📷 Esporta PNG HD</button>
+        </div>
+    </header>
+
+    <main>
+        <div class="viewport-container">
+            <canvas id="blueprintCanvas" width="1050" height="780"></canvas>
+        </div>
+
+        <aside class="side-panel">
+            <div class="panel-header">
+                📊 Telemetria Rilievo & Tour VLM
+            </div>
+            <div class="panel-body">
+                <div class="stat-card">
+                    <div class="stat-item">
+                        <span class="stat-label">Copertura Stanza</span>
+                        <span class="stat-value" id="statExplored">0.0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Celle Libere</span>
+                        <span class="stat-value" id="statFree">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Ostacoli Rilevati</span>
+                        <span class="stat-value" id="statObs">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Arredi Classificati</span>
+                        <span class="stat-value" id="statVlmCount">0</span>
+                    </div>
+                </div>
+
+                <div class="panel-header" style="padding:0; border:none; margin-top:8px;">
+                    👁️ Gallerie Ispezione Visiva Moondream2
+                </div>
+
+                <div id="inspectionGallery" style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; padding:20px;">
+                        Nessun arredo ispezionato. Avvia la Fase 2 (Tour VLM) per acquisire scatti visivi.
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('blueprintCanvas');
+        const ctx = canvas.getContext('2d');
+        const GRID_W = 70;
+        const GRID_H = 52;
+        const CELL_SIZE = 15; // 70 * 15 = 1050, 52 * 15 = 780 px
+
+        let ws = null;
+        let mapData = null;
+        let robotPose = { x: 350, y: 150, theta: 0 };
+        let semanticObjects = [];
+
+        function initWebSocket() {
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${location.hostname}:8888`;
+            
+            try {
+                ws = new WebSocket(wsUrl);
+                ws.onopen = () => {
+                    document.getElementById('connStatus').innerHTML = '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#00ff88;"></span> Connesso (WS)';
+                };
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'map_update' || data.grid) {
+                            mapData = data.grid || data;
+                            if (data.pose) robotPose = data.pose;
+                            if (data.semantic_objects) semanticObjects = data.semantic_objects;
+                            updateStats(data.stats);
+                            renderMap();
+                        } else if (data.type === 'vlm_inspection_event') {
+                            addInspectionCard(data);
+                        }
+                    } catch (e) { console.error("Error parsing WS msg", e); }
+                };
+                ws.onclose = () => {
+                    document.getElementById('connStatus').innerHTML = '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ff4d4d;"></span> Disconnesso (Retry...)';
+                    setTimeout(initWebSocket, 3000);
+                };
+            } catch (e) {
+                console.warn("WebSocket non disponibile, uso polling...");
+            }
+        }
+
+        function sendCommand(cmd) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ command: cmd }));
+            } else {
+                fetch('/api/command', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ command: cmd })
+                });
+            }
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('white-cad');
+            renderMap();
+        }
+
+        function updateStats(stats) {
+            if (!stats) return;
+            document.getElementById('statExplored').textContent = `${stats.explored_pct}%`;
+            document.getElementById('statFree').textContent = stats.free_cells;
+            document.getElementById('statObs').textContent = stats.obstacle_cells;
+        }
+
+        function renderMap() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const isWhite = document.body.classList.contains('white-cad');
+
+            // 1. Background grid
+            ctx.strokeStyle = isWhite ? 'rgba(0,0,0,0.06)' : 'rgba(0,242,254,0.08)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= canvas.width; x += CELL_SIZE) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y <= canvas.height; y += CELL_SIZE) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+
+            // 2. Render cells
+            if (mapData) {
+                for (let y = 0; y < GRID_H; y++) {
+                    for (let x = 0; x < GRID_W; x++) {
+                        const val = mapData[y] ? mapData[y][x] : -1;
+                        const px = x * CELL_SIZE;
+                        const py = y * CELL_SIZE;
+
+                        if (val === 1) {
+                            ctx.fillStyle = isWhite ? '#212529' : '#00f2fe';
+                            ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
+                        } else if (val === 0) {
+                            ctx.fillStyle = isWhite ? '#ffffff' : 'rgba(0, 242, 254, 0.04)';
+                            ctx.fillRect(px, py, CELL_SIZE, CELL_SIZE);
+                        }
+                    }
+                }
+            }
+
+            // 3. Render Semantic Objects
+            semanticObjects.forEach(obj => {
+                const px = obj.gx * CELL_SIZE;
+                const py = obj.gy * CELL_SIZE;
+                const pw = obj.span_x * CELL_SIZE;
+                const ph = obj.span_y * CELL_SIZE;
+
+                ctx.strokeStyle = isWhite ? '#d90429' : '#ff0055';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px, py, pw, ph);
+
+                ctx.fillStyle = isWhite ? '#d90429' : '#ff0055';
+                ctx.font = '11px sans-serif';
+                ctx.fillText(obj.label || 'Arredo', px + 4, py - 4);
+            });
+
+            // 4. Render Robot Pose
+            const rx = (robotPose.x / 10.0) * CELL_SIZE / 10.0;
+            const ry = (robotPose.y / 10.0) * CELL_SIZE / 10.0;
+            ctx.save();
+            ctx.translate(rx, ry);
+            ctx.rotate(robotPose.theta);
+            ctx.fillStyle = isWhite ? '#0056b3' : '#00ff88';
+            ctx.beginPath();
+            ctx.arc(0, 0, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.restore();
+        }
+
+        function addInspectionCard(data) {
+            const gallery = document.getElementById('inspectionGallery');
+            if (gallery.children.length === 1 && gallery.children[0].textContent.includes('Nessun arredo')) {
+                gallery.innerHTML = '';
+            }
+
+            const card = document.createElement('div');
+            card.className = 'inspection-card';
+            card.innerHTML = `
+                <img src="${data.image_b64 || '/api/img/placeholder.jpg'}" alt="${data.label}">
+                <div class="inspection-card-body">
+                    <div class="inspection-title">${data.icon || '🏷️'} ${data.label}</div>
+                    <div class="inspection-desc">${data.description || 'Analisi Moondream2 completata.'}</div>
+                </div>
+            `;
+            gallery.prepend(card);
+            document.getElementById('statVlmCount').textContent = gallery.children.length;
+        }
+
+        function exportPNG() {
+            const link = document.createElement('a');
+            link.download = `blueprint_smartcar_${Date.now()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+
+        initWebSocket();
+        renderMap();
+    </script>
+</body>
+</html>

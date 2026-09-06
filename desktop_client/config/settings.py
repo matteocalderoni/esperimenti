@@ -30,25 +30,32 @@ target_color = '#FF6D00'
 tcpClicSock = None
 BUFSIZ = 1024
 
+target_ip = "127.0.0.1"
+
 # File per memorizzare l'IP
 IP_FILE = os.path.join(os.path.dirname(__file__), "IP.txt")
 
 def save_ip(ip_address):
     """Salva l'IP nel file di configurazione."""
+    global target_ip
     try:
+        target_ip = str(ip_address).strip()
         with open(IP_FILE, "w") as f:
-            f.write(str(ip_address).strip())
+            f.write(target_ip)
     except Exception as e:
         print(f"Errore nel salvataggio dell'IP: {e}")
 
 def load_ip():
     """Carica l'IP salvato o restituisce un IP di default."""
+    global target_ip
     if os.path.exists(IP_FILE):
         try:
             with open(IP_FILE, "r") as f:
                 ip = f.read().strip()
                 if ip:
+                    target_ip = ip
                     return ip
         except Exception as e:
             print(f"Errore nella lettura dell'IP: {e}")
-    return "192.168.1.1"  # Default fallback
+    target_ip = "127.0.0.1"
+    return target_ip

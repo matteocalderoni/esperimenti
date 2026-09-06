@@ -127,6 +127,56 @@ def move(speed, direction, turn, radius=0.3):   # 0 < radius <= 1
                 Motor(3, -M3_Direction, speed)
                 Motor(4, -M4_Direction, speed)
 
+def move_distance_cm(dist_cm, speed=40):
+    """Avanzamento/Arretramento controllato per distanza specifica in centimetri."""
+    try:
+        from core.odometry_calibrator import load_calibration, get_voltage_compensation
+        cal = load_calibration()
+        v_comp = 1.0
+        try:
+            from Voltage import Voltage
+            v_sensor = Voltage()
+            v_sensor.setup()
+            v_curr = v_sensor.get_vin()
+            v_comp = get_voltage_compensation(v_curr, cal.get("calibration_voltage", 7.4))
+        except Exception:
+            pass
+        
+        speed_cm_s = cal.get("linear_speed_cm_s", 25.0)
+        direction = 1 if dist_cm >= 0 else -1
+        duration = (abs(dist_cm) / speed_cm_s) * v_comp
+        move(speed, direction, 'no')
+        time.sleep(duration)
+        motorStop()
+    except Exception as e:
+        print(f"⚠️ Errore move_distance_cm: {e}")
+        motorStop()
+
+def rotate_angle_deg(angle_deg, speed=40):
+    """Rotazione in-place controllata per angolo specifico in gradi."""
+    try:
+        from core.odometry_calibrator import load_calibration, get_voltage_compensation
+        cal = load_calibration()
+        v_comp = 1.0
+        try:
+            from Voltage import Voltage
+            v_sensor = Voltage()
+            v_sensor.setup()
+            v_curr = v_sensor.get_vin()
+            v_comp = get_voltage_compensation(v_curr, cal.get("calibration_voltage", 7.4))
+        except Exception:
+            pass
+        
+        speed_deg_s = cal.get("angular_speed_deg_s", 90.0)
+        turn_dir = 'rotate-left' if angle_deg >= 0 else 'rotate-right'
+        duration = (abs(angle_deg) / speed_deg_s) * v_comp
+        move(speed, 1, turn_dir)
+        time.sleep(duration)
+        motorStop()
+    except Exception as e:
+        print(f"⚠️ Errore rotate_angle_deg: {e}")
+        motorStop()
+
 def destroy():
     motorStop()
     pwm_motor.deinit()
@@ -145,4 +195,5 @@ if __name__ == '__main__':
         motorStop()
     except KeyboardInterrupt:
         destroy()
+
 

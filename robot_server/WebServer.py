@@ -193,11 +193,12 @@ def functionSelect(command_input, response):
         if OLED_connection:
             screen.screen_show(5,'KeepDistance')
 
-    elif 'exploration' == command_input:
+    elif command_input in ('exploration', 'start_slam'):
         if OLED_connection:
             screen.screen_show(5,'Exploration')
+        fuc.exploration()
 
-    elif 'explorationOff' == command_input:
+    elif command_input == 'explorationOff':
         if OLED_connection:
             screen.screen_show(5,'FUNCTION OFF')
         fuc.pause()
@@ -205,9 +206,10 @@ def functionSelect(command_input, response):
         time.sleep(0.5)
         move.motorStop()
 
-    elif 'inspectionTour' == command_input:
+    elif command_input in ('vlmTour', 'start_vlm_tour', 'inspectionTour'):
         if OLED_connection:
-            screen.screen_show(5,'Inspect Tour')
+            screen.screen_show(5,'VLM Tour')
+        threading.Thread(target=fuc.vlm_tour, daemon=True).start()
 
     elif 'inspectionTourOff' == command_input:
         if OLED_connection:
@@ -688,9 +690,24 @@ if __name__ == '__main__':
     tcp_thread.setDaemon(True)
     tcp_thread.start()
 
+    async def broadcast_map_loop():
+        while True:
+            try:
+                await asyncio.sleep(1.0)
+                if connected_clients and hasattr(fuc, 'behaviors') and 'exploration' in fuc.behaviors:
+                    exp = fuc.behaviors['exploration']
+                    data = exp.grid.to_dict()
+                    data['type'] = 'map_update'
+                    data['pose'] = exp.current_pose
+                    payload = json.dumps(data)
+                    await asyncio.gather(*[client.send(payload) for client in connected_clients], return_exceptions=True)
+            except Exception:
+                pass
+
     async def start_ws():
         global async_loop
         async_loop = asyncio.get_running_loop()
+        asyncio.create_task(broadcast_map_loop())
         async with websockets.serve(main_logic, '0.0.0.0', 8888):
             print('WebSocket Server running on ws://0.0.0.0:8888')
             await asyncio.Future()

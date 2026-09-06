@@ -130,6 +130,13 @@ class Functions(threading.Thread):
         self.functionMode = 'exploration'
         self.resume()
 
+    def vlm_tour(self, frame_provider_cb=None):
+        self.functionMode = 'none'
+        self.pause()
+        if 'exploration' in self.behaviors:
+            return self.behaviors['exploration'].start_vlm_tour(frame_provider_cb)
+        return []
+
     def steady(self, goalPos):
         self.functionMode = 'Steady'
         self.steadyGoal = goalPos

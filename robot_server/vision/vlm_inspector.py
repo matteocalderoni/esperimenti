@@ -1,3 +1,4 @@
+import os
 import requests
 import re
 
@@ -5,7 +6,9 @@ class VLMInspector:
     """
     Client VLM Open-Vocabulary per Riconoscimento Semantico Generico in Qualsiasi Ambiente.
     """
-    def __init__(self, ollama_url="http://localhost:11434", model="moondream", timeout=10):
+    def __init__(self, ollama_url=None, model="moondream", timeout=10):
+        if ollama_url is None:
+            ollama_url = os.environ.get("OLLAMA_URL", "http://localhost:11434")
         self.ollama_url = ollama_url.rstrip('/')
         self.model = model
         self.timeout = timeout

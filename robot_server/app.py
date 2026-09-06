@@ -64,6 +64,11 @@ sim_dir_path = os.path.realpath(os.path.join(dir_path, '../../../../../simulazio
 if not os.path.exists(sim_dir_path):
     sim_dir_path = '/Users/mauroi/Documents/esperimenti/simulazione/web_simulator'
 
+@app.route('/blueprint')
+@app.route('/blueprint/')
+def blueprint():
+    return render_template('blueprint.html')
+
 @app.route('/simulator')
 @app.route('/simulator/')
 def simulator():

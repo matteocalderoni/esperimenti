@@ -75,9 +75,10 @@ class RoomExplorerBehavior(BaseBehavior):
         elif self.fsm_state == 'FIND_FRONTIERS':
             stats = self.grid.get_stats()
             if stats['explored_pct'] >= 99:
-                print("🎉 [FSM: COMPLETE] Target 99% raggiunto con successo!")
-                self.fsm_state = 'SCAN_360'
-                time.sleep(1.0)
+                print("🎉 [FSM: COMPLETE] Target 99% raggiunto con successo! Arresto robot.")
+                move.motorStop()
+                self.fsm_state = 'COMPLETE'
+                self._sound_completion_beep()
                 return last_status
 
             gx, gy = self.grid.world_to_grid(self.current_pose['x'], self.current_pose['y'])
@@ -126,5 +127,70 @@ class RoomExplorerBehavior(BaseBehavior):
             if self.path_index >= len(self.current_path) - 1:
                 self.fsm_state = 'SCAN_360'
 
+        elif self.fsm_state == 'COMPLETE':
+            move.motorStop()
+
         time.sleep(0.05)
         return last_status
+
+    def _sound_completion_beep(self):
+        """Emette un segnale acustico di completamento rilievo."""
+        try:
+            if hasattr(self.context, 'switch'):
+                self.context.switch.switch(1, 1)
+                time.sleep(0.2)
+                self.context.switch.switch(1, 0)
+        except Exception:
+            pass
+
+    def start_vlm_tour(self, frame_provider_cb=None):
+        """
+        Fase 2: Tour d'Ispezione Visiva dei cluster e arredi rilevati in Fase 1.
+        """
+        print("👁️ [VLM TOUR] Avvio tour d'ispezione visiva degli arredi...")
+        self.grid.classify_semantic_objects()
+        objects = self.grid.semantic_objects
+
+        if not objects:
+            print("ℹ️ Nessun oggetto o arredo isolato da ispezionare.")
+            return []
+
+        results = []
+        for obj in objects:
+            print(f"📷 [VLM TOUR] Inquadramento arredo: {obj['label']} a ({obj['world_x']:.1f}, {obj['world_y']:.1f})")
+            # Calcolo orientamento verso il centro dell'oggetto
+            dx = obj['world_x'] - self.current_pose['x']
+            dy = obj['world_y'] - self.current_pose['y']
+            target_angle = math.atan2(dy, dx)
+            angle_diff_deg = math.degrees(target_angle - self.current_pose['theta'])
+            
+            # Pivot turn continuo
+            move.rotate_angle_deg(angle_diff_deg, speed=40)
+            self.current_pose['theta'] = target_angle
+            time.sleep(0.5)
+
+            # Acquisizione frame
+            frame_b64 = None
+            if frame_provider_cb:
+                frame_b64 = frame_provider_cb()
+            elif self.latest_frame:
+                frame_b64 = self.latest_frame
+
+            vlm_res = {"landmarks": [], "status": "no_frame"}
+            if frame_b64:
+                vlm_res = self.vlm.analyze_frame(frame_b64)
+                if vlm_res.get('landmarks'):
+                    top_landmark = vlm_res['landmarks'][0]
+                    obj['label'] = f"{top_landmark['icon']} {top_landmark['display']}"
+                    obj['type'] = top_landmark['type']
+                    obj['vlm_description'] = top_landmark['description']
+                    print(f"✨ [VLM RICONOSCIUTO] {obj['label']}")
+
+            results.append({
+                "object": obj,
+                "vlm_result": vlm_res
+            })
+
+        print("✅ [VLM TOUR] Tour d'ispezione visiva completato con successo!")
+        return results
+
