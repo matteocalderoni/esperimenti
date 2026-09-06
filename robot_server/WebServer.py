@@ -101,6 +101,20 @@ def functionSelect(command_input, response):
             radar_send = fuc.radarScan()
             response['title'] = 'scanResult'
             response['data'] = radar_send
+            
+            # Se la griglia SLAM è attiva, aggiorna la mappa con i raggi della scansione radar
+            if hasattr(fuc, 'behaviors') and 'exploration' in fuc.behaviors:
+                try:
+                    exp = fuc.behaviors['exploration']
+                    rx, ry = exp.current_pose['x'], exp.current_pose['y']
+                    heading = exp.current_pose['theta']
+                    for item in radar_send:
+                        if isinstance(item, (list, tuple)) and len(item) >= 2:
+                            dist_m = float(item[0]) / 100.0
+                            theta_deg = float(item[1]) - 90.0
+                            exp.grid.update_ray(rx, ry, dist_m, heading + math.radians(theta_deg))
+                except Exception as e:
+                    print(f"Errore aggiornamento SLAM da Radar: {e}")
             time.sleep(0.3)
 
     elif 'findColor' == command_input:
