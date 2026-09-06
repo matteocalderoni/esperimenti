@@ -10,6 +10,7 @@ class FeaturePanel:
         
         self.func_buttons = {}
         self.sw_buttons = {}
+        self.active_func_name = None
         
         # Crea le due schede container
         self.card_auto = tk.LabelFrame(parent, text=" Automazioni & IA ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
@@ -29,19 +30,29 @@ class FeaturePanel:
             'Evitamento': ('automatic', 'automaticOff'),
             'Trova Colore': ('findColor', 'stopCV'),
             'Segui Linea': ('trackLine', 'trackLineOff'),
-            'Rileva Moto': ('motionGet', 'stopCV'),
+            'Rilevamento': ('motionGet', 'stopCV'),
             'Mappa SLAM': ('start_slam', 'stopCV'),
             'Lampeggiante': ('police', 'policeOff'),
             'Tour VLM': ('vlmTour', 'stopCV')
         }
 
         def on_func_press(name, on_cmd, off_cmd):
-            if settings.function_stu == 0:
-                self.send(on_cmd)
-                settings.function_stu = 1
-            else:
+            if self.active_func_name == name:
+                # Disattiva la funzione corrente se cliccata di nuovo
                 self.send(off_cmd)
-                settings.function_stu = 0
+                self.active_func_name = None
+                self.func_buttons[name].config(bg=settings.color_btn)
+            else:
+                # Spegne la funzione precedente
+                if self.active_func_name and self.active_func_name in funcs:
+                    prev_off = funcs[self.active_func_name][1]
+                    self.send(prev_off)
+                    self.func_buttons[self.active_func_name].config(bg=settings.color_btn)
+                
+                # Attiva la nuova funzione selezionata
+                self.send(on_cmd)
+                self.active_func_name = name
+                self.func_buttons[name].config(bg='#4CAF50')
 
         # Dispone i pulsanti in due colonne ordinate da 4 righe ciascuna
         for i, (name, (on_cmd, off_cmd)) in enumerate(funcs.items()):
@@ -129,21 +140,28 @@ class FeaturePanel:
     def update_func_color(self, name, active):
         """Cambia colore del bottone funzione (verde = attivo, blu = inattivo)."""
         cmd_to_name = {
-            'scan': 'Radar Scan', 'findColor': 'Trova Colore', 'motionGet': 'Rileva Moto',
+            'scan': 'Radar Scan', 'findColor': 'Trova Colore', 'motionGet': 'Rilevamento',
             'police': 'Lampeggiante', 'automatic': 'Evitamento', 'trackLine': 'Segui Linea',
-            'start_slam': 'Mappa SLAM', 'vlmTour': 'Tour VLM'
+            'start_slam': 'Mappa SLAM', 'exploration': 'Mappa SLAM',
+            'vlmTour': 'Tour VLM', 'start_vlm_tour': 'Tour VLM'
         }
         btn_name = cmd_to_name.get(name, name)
         
         if btn_name == 'stopCV':
-            # Spegne tutti i pulsanti funzione
-            for btn in self.func_buttons.values():
+            for bname, btn in self.func_buttons.items():
                 btn.config(bg=settings.color_btn)
-            settings.function_stu = 0
+            self.active_func_name = None
             return
 
         if btn_name in self.func_buttons:
-            self.func_buttons[btn_name].config(bg='#4CAF50' if active else settings.color_btn)
+            if active:
+                self.active_func_name = btn_name
+                for bname, btn in self.func_buttons.items():
+                    btn.config(bg='#4CAF50' if bname == btn_name else settings.color_btn)
+            else:
+                if self.active_func_name == btn_name:
+                    self.active_func_name = None
+                self.func_buttons[btn_name].config(bg=settings.color_btn)
 
     def update_switch_color(self, num, active):
         """Aggiorna il colore del pulsante Switch (verde = attivo, blu = inattivo)."""
