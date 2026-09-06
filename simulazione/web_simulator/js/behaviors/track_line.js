@@ -13,19 +13,40 @@ function runTrackLineBehavior() {
 
   robotState.panAngle = 0;
 
-  if (center === 0) {
-    robotState.speed = 132;
-    robotState.steering = 0;
-  } else if (left === 0) {
-    robotState.speed = 96;
-    robotState.steering = -3.6;
-  } else if (right === 0) {
-    robotState.speed = 96;
-    robotState.steering = 3.6;
+  if (left === 0 || center === 0 || right === 0) {
+    if (center === 0) {
+      robotState.speed = 138;
+      robotState.steering = 0;
+    } else if (left === 0) {
+      robotState.speed = 100;
+      robotState.steering = -3.8;
+    } else if (right === 0) {
+      robotState.speed = 100;
+      robotState.steering = 3.8;
+    }
   } else {
-    robotState.speed = 30;
-    robotState.steering = 3;
+    // Se il robot è fuori tracciato, naviga attivamente verso il punto più vicino della linea
+    let nearest = null;
+    let minDist = Infinity;
+    if (typeof arenaObjects !== 'undefined' && arenaObjects.lineTrack) {
+      for (const pt of arenaObjects.lineTrack) {
+        const d = Math.hypot(pt.x - robotState.x, pt.y - robotState.y);
+        if (d < minDist) { minDist = d; nearest = pt; }
+      }
+    }
+    if (nearest && minDist > 35) {
+      const targetAngle = Math.atan2(nearest.y - robotState.y, nearest.x - robotState.x);
+      let diff = targetAngle - robotState.angle;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      robotState.steering = diff * 3.5;
+      robotState.speed = Math.min(130, minDist * 1.5);
+    } else {
+      robotState.speed = 70;
+      robotState.steering = 2.5;
+    }
   }
 }
 
 registerBehavior('trackLine', runTrackLineBehavior);
+registerBehavior('CVFL', runTrackLineBehavior);

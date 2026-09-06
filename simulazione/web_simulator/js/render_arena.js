@@ -77,18 +77,102 @@ function drawArena() {
   arenaCtx.fill();
   arenaCtx.shadowBlur = 0;
 
-  // 6. Cono Raggio Ultrasuoni (Ampiezza fisica ~22°)
+  // 6. Cono Sensori & Radar Scan / Watchdog
   const totalHeadAngle = robotState.angle + (robotState.panAngle * Math.PI / 180);
   const distPx = robotState.ultrasonicDist * 160;
-  arenaCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
-  arenaCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
-  arenaCtx.lineWidth = 3;
-  arenaCtx.beginPath();
-  arenaCtx.moveTo(robotState.x, robotState.y);
-  arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.38, totalHeadAngle + 0.38);
-  arenaCtx.closePath();
-  arenaCtx.fill();
-  arenaCtx.stroke();
+
+  if (robotState.activeMode === 'scan') {
+    // Cerchi concentrici di portata radar (50cm, 100cm, 150cm, 200cm)
+    arenaCtx.save();
+    arenaCtx.strokeStyle = 'rgba(0, 245, 212, 0.18)';
+    arenaCtx.lineWidth = 1.5;
+    arenaCtx.setLineDash([6, 6]);
+    for (let r = 80; r <= 320; r += 80) {
+      arenaCtx.beginPath();
+      arenaCtx.arc(robotState.x, robotState.y, r, 0, Math.PI * 2);
+      arenaCtx.stroke();
+    }
+    arenaCtx.setLineDash([]);
+
+    // Fascio del Radar con gradiente luminoso che spazza a 180°
+    const radarBeamGrad = arenaCtx.createRadialGradient(
+      robotState.x, robotState.y, 10,
+      robotState.x, robotState.y, Math.max(distPx, 40)
+    );
+    radarBeamGrad.addColorStop(0, 'rgba(0, 245, 212, 0.6)');
+    radarBeamGrad.addColorStop(0.8, 'rgba(0, 245, 212, 0.25)');
+    radarBeamGrad.addColorStop(1, 'rgba(0, 245, 212, 0.05)');
+
+    arenaCtx.fillStyle = radarBeamGrad;
+    arenaCtx.strokeStyle = '#00f5d4';
+    arenaCtx.lineWidth = 3;
+    arenaCtx.beginPath();
+    arenaCtx.moveTo(robotState.x, robotState.y);
+    arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.45, totalHeadAngle + 0.45);
+    arenaCtx.closePath();
+    arenaCtx.fill();
+    arenaCtx.stroke();
+
+    // Raggio centrale del radar
+    arenaCtx.strokeStyle = '#ffffff';
+    arenaCtx.lineWidth = 2;
+    arenaCtx.beginPath();
+    arenaCtx.moveTo(robotState.x, robotState.y);
+    arenaCtx.lineTo(robotState.x + Math.cos(totalHeadAngle) * distPx, robotState.y + Math.sin(totalHeadAngle) * distPx);
+    arenaCtx.stroke();
+
+    // Punto di eco radar (riflessione onda su ostacolo)
+    const echoX = robotState.x + Math.cos(totalHeadAngle) * distPx;
+    const echoY = robotState.y + Math.sin(totalHeadAngle) * distPx;
+    arenaCtx.fillStyle = '#ff0055';
+    arenaCtx.shadowColor = '#ff0055';
+    arenaCtx.shadowBlur = 12;
+    arenaCtx.beginPath();
+    arenaCtx.arc(echoX, echoY, 6, 0, Math.PI * 2);
+    arenaCtx.fill();
+    arenaCtx.shadowBlur = 0;
+
+    // Etichetta stato radar
+    arenaCtx.font = 'bold 16px "JetBrains Mono", monospace';
+    arenaCtx.fillStyle = '#00f5d4';
+    arenaCtx.textAlign = 'center';
+    arenaCtx.fillText(`📡 RADAR SCAN (${Math.round(robotState.panAngle)}°) - ${(robotState.ultrasonicDist * 100).toFixed(0)}cm`, robotState.x, robotState.y - 42);
+    arenaCtx.restore();
+
+  } else if (robotState.activeMode === 'motionGet') {
+    // Cono Sorveglianza / WatchDog (Ambra / Arancione)
+    arenaCtx.save();
+    arenaCtx.fillStyle = 'rgba(245, 158, 11, 0.20)';
+    arenaCtx.strokeStyle = 'rgba(245, 158, 11, 0.7)';
+    arenaCtx.lineWidth = 2.5;
+    arenaCtx.setLineDash([8, 4]);
+    arenaCtx.beginPath();
+    arenaCtx.moveTo(robotState.x, robotState.y);
+    arenaCtx.arc(robotState.x, robotState.y, Math.max(distPx, 180), totalHeadAngle - 0.52, totalHeadAngle + 0.52);
+    arenaCtx.closePath();
+    arenaCtx.fill();
+    arenaCtx.stroke();
+    arenaCtx.setLineDash([]);
+
+    // Etichetta WatchDog
+    arenaCtx.font = 'bold 16px "JetBrains Mono", monospace';
+    arenaCtx.fillStyle = '#f59e0b';
+    arenaCtx.textAlign = 'center';
+    arenaCtx.fillText(`👁️ WATCHDOG SORVEGLIANZA (${Math.round(robotState.panAngle)}°)`, robotState.x, robotState.y - 42);
+    arenaCtx.restore();
+
+  } else {
+    // Cono Standard Ultrasuoni (~22°)
+    arenaCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+    arenaCtx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+    arenaCtx.lineWidth = 3;
+    arenaCtx.beginPath();
+    arenaCtx.moveTo(robotState.x, robotState.y);
+    arenaCtx.arc(robotState.x, robotState.y, distPx, totalHeadAngle - 0.38, totalHeadAngle + 0.38);
+    arenaCtx.closePath();
+    arenaCtx.fill();
+    arenaCtx.stroke();
+  }
 
   // 7. Disegna il Robot Adeept 4WD
   arenaCtx.save();
@@ -117,6 +201,21 @@ function drawArena() {
   arenaCtx.fillStyle = irCols[1]; arenaCtx.beginPath(); arenaCtx.arc(24, 0, 4, 0, Math.PI * 2); arenaCtx.fill();   // Centro
   arenaCtx.fillStyle = irCols[2]; arenaCtx.beginPath(); arenaCtx.arc(24, 12, 4, 0, Math.PI * 2); arenaCtx.fill();  // Destro
 
+  // Indicatori Porte Switch (P1, P2, P3) sul retro del telaio
+  const sw = robotState.switches || {};
+  for (let i = 1; i <= 3; i++) {
+    const isOn = !!sw[i];
+    arenaCtx.fillStyle = isOn ? '#00ff55' : '#334155';
+    if (isOn) {
+      arenaCtx.shadowColor = '#00ff55';
+      arenaCtx.shadowBlur = 8;
+    }
+    arenaCtx.beginPath();
+    arenaCtx.arc(-22, -10 + (i - 1) * 10, 3, 0, Math.PI * 2);
+    arenaCtx.fill();
+    arenaCtx.shadowBlur = 0;
+  }
+
   // Ruote 4WD
   arenaCtx.fillStyle = '#334155';
   arenaCtx.fillRect(-24, -26, 16, 8);
@@ -133,6 +232,11 @@ function drawArena() {
   arenaCtx.fill();
   arenaCtx.fillStyle = '#000';
   arenaCtx.fillRect(5, -5, 10, 10);
+  // Indicatore ottico / lens
+  arenaCtx.fillStyle = (robotState.activeMode === 'motionGet') ? '#ffaa00' : '#00ff55';
+  arenaCtx.beginPath();
+  arenaCtx.arc(14, 0, 3, 0, Math.PI * 2);
+  arenaCtx.fill();
   arenaCtx.restore();
 
   arenaCtx.restore();

@@ -130,3 +130,4 @@ function runExplorationBehavior(dt) {
 }
 
 registerBehavior('exploration', runExplorationBehavior);
+registerBehavior('start_slam', runExplorationBehavior);

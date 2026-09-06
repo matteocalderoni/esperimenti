@@ -34,7 +34,10 @@ function startInspectionTour() {
 }
 
 function runInspectionTourBehavior(dt) {
-  if (!slamMap || !slamMap.grid) return;
+  if (!slamMap || !slamMap.grid) {
+    if (typeof initSlamGrid === 'function') initSlamGrid();
+    else return;
+  }
 
   var W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
   var H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
@@ -66,8 +69,29 @@ function runInspectionTourBehavior(dt) {
       }
     });
 
+    // Se non ci sono cluster da SLAM, fallback immediato agli arredi noti dell'arena
+    if (candidates.length === 0 && typeof arenaObjects !== 'undefined' && arenaObjects.walls) {
+      console.log('ℹ️ [Tour VLM] Generazione tappe di ispezione diretta dagli arredi dell\'arena...');
+      arenaObjects.walls.forEach(function(w) {
+        var cX = w.x + w.w / 2;
+        var cY = w.y + w.h / 2;
+        var inspectX = cX;
+        var inspectY = (w.y + w.h + 65 < H - 50) ? (w.y + w.h + 65) : (w.y - 65);
+        if (inspectY < 50) inspectY = 50;
+        var targetAngle = Math.atan2(cY - inspectY, cX - inspectX);
+        var gPos = (typeof slamWorldToGrid === 'function') ? slamWorldToGrid(inspectX, inspectY) : { gx: Math.round(inspectX / 10), gy: Math.round(inspectY / 10) };
+        candidates.push({
+          cluster: { minX: Math.round(w.x / 10), maxX: Math.round((w.x + w.w) / 10), minY: Math.round(w.y / 10), maxY: Math.round((w.y + w.h) / 10), name: w.name },
+          pose: { worldX: inspectX, worldY: inspectY, theta: targetAngle, gx: gPos.gx, gy: gPos.gy },
+          cX: cX,
+          cY: cY,
+          attempts: 0
+        });
+      });
+    }
+
     if (candidates.length === 0) {
-      console.log('⚠️ [Tour VLM] Nessun arredo interno rilevato dallo SLAM da ispezionare.');
+      console.log('⚠️ [Tour VLM] Nessun arredo interno rilevato da ispezionare.');
       tourState.fsmState = 'COMPLETE';
       return;
     }
@@ -325,3 +349,4 @@ function runInspectionTourBehavior(dt) {
 }
 
 registerBehavior('inspectionTour', runInspectionTourBehavior);
+registerBehavior('vlmTour', runInspectionTourBehavior);

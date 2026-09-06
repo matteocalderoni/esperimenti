@@ -91,7 +91,12 @@ function updateModeBadge() {
     'trackLight': 'LIGHT TRACKING',
     'keepDistance': 'KEEP DISTANCE (RADAR)',
     'exploration': '🗺️ 1. SLAM MAPPATURA & QUOTE',
-    'inspectionTour': '🔍 2. TOUR RICONOSCIMENTO ARREDI (VLM)'
+    'start_slam': '🗺️ 1. SLAM MAPPATURA & QUOTE',
+    'inspectionTour': '🔍 2. TOUR RICONOSCIMENTO ARREDI (VLM)',
+    'vlmTour': '🔍 2. TOUR RICONOSCIMENTO ARREDI (VLM)',
+    'scan': '📡 RADAR SCAN (180° SWEEP)',
+    'motionGet': '👁️ RILEVAMENTO MOVIMENTO (WATCHDOG)',
+    'CVFL': 'LINE TRACKING (OPENCV)'
   };
   const modeLabel = modeNames[robotState.activeMode] || robotState.activeMode.toUpperCase();
   const engineLabel = robotState.engineMode === 'JS' ? '🧪 ENGINE: JS EXPERIMENTAL' : '🐍 ENGINE: PYTHON SERVER';

@@ -621,6 +621,10 @@ def handle_tcp_client(tcpCliSock, addr):
                     except Exception:
                         pass
                 
+                # Invia subito in broadcast al simulatore web via WebSocket per reattività istantanea
+                if data != 'get_info' and async_loop and connected_clients:
+                    asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
+
                 if isinstance(data, str):
                     robotCtrl(data, response)
                     switchCtrl(data, response)
@@ -684,18 +688,11 @@ def handle_tcp_client(tcpCliSock, addr):
                         except Exception:
                             pass
 
-                    # Invia in broadcast al simulatore web via WebSocket
-                    if data != 'get_info' and async_loop and connected_clients:
-                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
-
                 elif isinstance(data, dict):
                     if data.get('title') == "findColorSet":
                         color = data.get('data', [0, 0, 0])
                         flask_app.colorFindSet(color[0], color[1], color[2])
                         response['title'] = 'findColorSet'
-                    
-                    if async_loop and connected_clients:
-                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
                 
                 # Invia risposta formattata al client TCP con newline delimiter
                 response_str = json.dumps(response) + '\n'
