@@ -75,13 +75,45 @@ function runInspectionTourBehavior(dt) {
       arenaObjects.walls.forEach(function(w) {
         var cX = w.x + w.w / 2;
         var cY = w.y + w.h / 2;
-        var inspectX = cX;
-        var inspectY = (w.y + w.h + 65 < H - 50) ? (w.y + w.h + 65) : (w.y - 65);
-        if (inspectY < 50) inspectY = 50;
+        var gMin = (typeof slamWorldToGrid === 'function') ? slamWorldToGrid(w.x, w.y) : { gx: Math.floor((w.x / W) * slamMap.width), gy: Math.floor((w.y / H) * slamMap.height) };
+        var gMax = (typeof slamWorldToGrid === 'function') ? slamWorldToGrid(w.x + w.w, w.y + w.h) : { gx: Math.floor(((w.x + w.w) / W) * slamMap.width), gy: Math.floor(((w.y + w.h) / H) * slamMap.height) };
+
+        // Trova una posa di ispezione libera a distanza ottimale (~105 px)
+        var inspectX = cX, inspectY = cY;
+        var options = [
+          { x: cX, y: w.y - 105 },                  // Nord
+          { x: cX, y: w.y + w.h + 105 },            // Sud
+          { x: w.x - 105, y: cY },                  // Ovest
+          { x: w.x + w.w + 105, y: cY }             // Est
+        ];
+        var foundPose = false;
+        for (var i = 0; i < options.length; i++) {
+          var opt = options[i];
+          if (opt.x >= 70 && opt.x <= W - 70 && opt.y >= 70 && opt.y <= H - 70) {
+            var insideOtherWall = arenaObjects.walls.some(function(other) {
+              return other !== w && opt.x >= other.x - 25 && opt.x <= other.x + other.w + 25 &&
+                     opt.y >= other.y - 25 && opt.y <= other.y + other.h + 25;
+            });
+            if (!insideOtherWall) {
+              inspectX = opt.x;
+              inspectY = opt.y;
+              foundPose = true;
+              break;
+            }
+          }
+        }
+        if (!foundPose) {
+          inspectX = cX;
+          inspectY = (w.y + w.h + 105 < H - 70) ? (w.y + w.h + 105) : (w.y - 105);
+        }
+
         var targetAngle = Math.atan2(cY - inspectY, cX - inspectX);
-        var gPos = (typeof slamWorldToGrid === 'function') ? slamWorldToGrid(inspectX, inspectY) : { gx: Math.round(inspectX / 10), gy: Math.round(inspectY / 10) };
+        var gPos = (typeof slamWorldToGrid === 'function') ? slamWorldToGrid(inspectX, inspectY) : { gx: Math.floor((inspectX / W) * slamMap.width), gy: Math.floor((inspectY / H) * slamMap.height) };
         candidates.push({
-          cluster: { minX: Math.round(w.x / 10), maxX: Math.round((w.x + w.w) / 10), minY: Math.round(w.y / 10), maxY: Math.round((w.y + w.h) / 10), name: w.name },
+          cluster: {
+            minX: gMin.gx, maxX: gMax.gx, minY: gMin.gy, maxY: gMax.gy,
+            name: w.name, vlm: w.vlm, icon: w.icon, category: w.category
+          },
           pose: { worldX: inspectX, worldY: inspectY, theta: targetAngle, gx: gPos.gx, gy: gPos.gy },
           cX: cX,
           cY: cY,
@@ -229,26 +261,28 @@ function runInspectionTourBehavior(dt) {
     while (diffAngle > Math.PI) diffAngle -= 2 * Math.PI;
     while (diffAngle < -Math.PI) diffAngle += 2 * Math.PI;
 
-    // Se l'orientamento è allineato (entro 0.06 rad ~ 3.4°), arresta rotazione e procedi allo scatto
-    if (Math.abs(diffAngle) <= 0.06) {
+    // Se l'orientamento è allineato (entro 0.12 rad ~ 6.8°) o tempo limite raggiunto
+    tourState.alignFrames = (tourState.alignFrames || 0) + 1;
+    if (Math.abs(diffAngle) <= 0.12 || (tourState.alignFrames > 45 && Math.abs(diffAngle) <= 0.35)) {
       robotState.steering = 0;
-      // Micro-allineamento ottico della torretta pan/tilt
-      robotState.panAngle = diffAngle * 180 / Math.PI;
+      // Micro-allineamento ottico della torretta pan/tilt (assorbe l'errore residuo)
+      robotState.panAngle = Math.max(-80, Math.min(80, diffAngle * 180 / Math.PI));
       robotState.tiltAngle = 5;
 
       if (typeof updateThreeCamera === 'function') {
         updateThreeCamera();
       }
 
+      tourState.alignFrames = 0;
       tourState.waitFrames = 0;
       tourState.fsmState = 'INSPECT';
       console.log('🎯 [Tour VLM] Allineamento ottico completato verso (' + Math.round(targetLookX) + ', ' + Math.round(targetLookY) + ')');
       return;
     }
 
-    // Rotazione fisica continua differenziale sul posto (velocità angolare max 2.2 rad/s proporzionale)
+    // Rotazione fisica continua differenziale sul posto proporzionale e smorzata
     var turnDir = (diffAngle > 0) ? 1 : -1;
-    var omega = turnDir * Math.min(2.2, Math.max(0.7, Math.abs(diffAngle) * 2.8));
+    var omega = turnDir * Math.min(1.8, Math.max(0.4, Math.abs(diffAngle) * 2.0));
     robotState.steering = omega;
     robotState.panAngle = 0;
     robotState.tiltAngle = 5;
@@ -305,9 +339,14 @@ function runInspectionTourBehavior(dt) {
           tourState.fsmState = 'SELECT_TARGET';
         } else {
           if (res && res.reason === 'too_far') {
-            console.warn('⚠️ [Tour VLM] Distanza eccessiva per scatto. Riposizionamento...');
-            tourState.attemptsForCurrent = Math.max(0, tourState.attemptsForCurrent - 1);
-            tourState.fsmState = 'SELECT_TARGET';
+            console.warn('⚠️ [Tour VLM] Distanza eccessiva per scatto. Forzatura acquisizione...');
+            if (tourState.attemptsForCurrent >= 3) {
+              registerUnknownObstacleLandmark(cX, cY, tourState.currentCluster);
+              tourState.currentIndex++;
+              tourState.fsmState = 'SELECT_TARGET';
+            } else {
+              tourState.waitFrames = 0;
+            }
             return;
           }
           if (tourState.attemptsForCurrent >= 5) {

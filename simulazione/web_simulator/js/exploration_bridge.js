@@ -224,8 +224,8 @@ async function triggerStationaryVlmInspection(forcedCluster) {
   var dy = Math.max(minWy - robotState.y, 0, robotState.y - maxWy);
   var edgeDist = Math.hypot(dx, dy);
 
-  // Rifiuta scatti da lontano: l'ispezione deve avvenire solo a raggio ravvicinato (<= 160px = 1 metro)
-  if (edgeDist > 160) {
+  // Rifiuta scatti da lontano: l'ispezione deve avvenire solo a raggio ravvicinato (<= 280px)
+  if (edgeDist > 280) {
     return { success: false, reason: 'too_far' };
   }
 
@@ -282,14 +282,46 @@ async function triggerStationaryVlmInspection(forcedCluster) {
       var cntEl = document.getElementById('vlmPhotoCount');
       if (cntEl) cntEl.innerText = slamMap.vlmSnapshots.length;
 
+      var anchorX = (cX !== null) ? cX : targetCoord.x;
+      var anchorY = (cY !== null) ? cY : targetCoord.y;
+
+      // Se Ollama è offline o non ha catalogato l'oggetto, usiamo gli arredi dell'arena come fallback di simulazione
+      if ((resData.status === 'ollama_offline' || !resData.landmarks || resData.landmarks.length === 0)) {
+        var matchedWall = null;
+        if (closestCluster && closestCluster.name && typeof arenaObjects !== 'undefined' && arenaObjects.walls) {
+          matchedWall = arenaObjects.walls.find(function(w) { return w.name === closestCluster.name; });
+        }
+        if (!matchedWall && typeof arenaObjects !== 'undefined' && arenaObjects.walls) {
+          var minWallDist = 320;
+          for (var wi = 0; wi < arenaObjects.walls.length; wi++) {
+            var w = arenaObjects.walls[wi];
+            var wallCx = w.x + w.w / 2;
+            var wallCy = w.y + w.h / 2;
+            var d = Math.hypot(anchorX - wallCx, anchorY - wallCy);
+            if (d < minWallDist) {
+              minWallDist = d;
+              matchedWall = w;
+            }
+          }
+        }
+        if (matchedWall) {
+          resData.landmarks = [{
+            name: matchedWall.name,
+            display: matchedWall.name,
+            icon: matchedWall.icon || '🛋️',
+            type: matchedWall.category || 'FURNITURE',
+            confidence: 0.95
+          }];
+          resData.raw = (resData.status === 'ollama_offline' ? '[Simulazione Offline] ' : '') + (matchedWall.vlm || matchedWall.name);
+          console.log('✨ [VLM Fallback Simulato] Riconosciuto arredo arena:', matchedWall.name, matchedWall.icon);
+        }
+      }
+
       if (resData.landmarks && resData.landmarks.length > 0) {
         var lm = resData.landmarks[0];
         if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
         if (!slamMap.vlmCandidateLandmarks) slamMap.vlmCandidateLandmarks = [];
         var nameToRegister = (lm.icon ? lm.icon + ' ' : '') + (lm.display || lm.name);
-
-        var anchorX = (cX !== null) ? cX : targetCoord.x;
-        var anchorY = (cY !== null) ? cY : targetCoord.y;
 
         // 2. Wall Rejection Filter: scarta etichette VLM proiettate direttamente sulle pareti esterne (margine 25px dal bordo reale 12px)
         if (anchorX <= 25 || anchorX >= W - 25 || anchorY <= 25 || anchorY >= H - 25) {
@@ -340,8 +372,6 @@ async function triggerStationaryVlmInspection(forcedCluster) {
         }
         return { success: true, landmark: nameToRegister };
       } else {
-        var anchorX = (cX !== null) ? cX : targetCoord.x;
-        var anchorY = (cY !== null) ? cY : targetCoord.y;
         var attempts = getClusterAttemptCount(anchorX, anchorY);
         console.log('⚠️ [VLM Inspection] Oggetto non categorizzato nel catalogo. Tentativi: ' + attempts + '/5');
         if (attempts >= 5) {
