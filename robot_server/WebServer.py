@@ -557,10 +557,103 @@ async def broadcast_to_ws(message):
         payload = json.dumps({"type": "command", "value": message})
         await asyncio.gather(*[client.send(payload) for client in connected_clients], return_exceptions=True)
 
+def handle_tcp_client(tcpCliSock, addr):
+    BUFSIZ = 1024
+    print(f"[TCP SERVER] Desktop Client connesso da {addr}")
+    while True:
+        try:
+            raw_bytes = tcpCliSock.recv(BUFSIZ)
+            if not raw_bytes:
+                break
+            
+            data = raw_bytes.decode('utf-8', errors='ignore')
+            response = {'status': 'ok', 'title': '', 'data': None}
+            
+            try:
+                data_parsed = json.loads(data)
+                data = data_parsed
+            except Exception:
+                pass
+            
+            if isinstance(data, str):
+                robotCtrl(data, response)
+                switchCtrl(data, response)
+                functionSelect(data, response)
+                configPWM(data, response)
+                
+                if 'get_info' == data:
+                    response['title'] = 'get_info'
+                    response['data'] = [info.get_cpu_tempfunc(), info.get_cpu_use(), info.get_ram_info()]
+                
+                if 'wsB' in data:
+                    try:
+                        set_B = data.split()
+                        global speed_set
+                        speed_set = int(set_B[1])
+                    except Exception:
+                        pass
+                        
+                elif 'CVFL' == data:
+                    camera_opencv.FLCV_Status = 0
+                    flask_app.modeselect('findlineCV')
+                    if OLED_connection:
+                        screen.screen_show(5,'CVLine')
+
+                elif 'CVFLColorSet' in data:
+                    try:
+                        color = int(data.split()[1])
+                        flask_app.camera.colorSet(color)
+                    except Exception:
+                        pass
+
+                elif 'CVFLL1' in data:
+                    try:
+                        pos = int(data.split()[1])
+                        flask_app.camera.linePosSet_1(pos)
+                    except Exception:
+                        pass
+
+                elif 'CVFLL2' in data:
+                    try:
+                        pos = int(data.split()[1])
+                        flask_app.camera.linePosSet_2(pos)
+                    except Exception:
+                        pass
+
+                elif 'CVFLSP' in data:
+                    try:
+                        err = int(data.split()[1])
+                        flask_app.camera.errorSet(err)
+                    except Exception:
+                        pass
+
+                # Broadcast the command to all active WebSocket clients (like the 2D simulator)
+                if data != 'get_info' and async_loop and connected_clients:
+                    asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
+
+            elif isinstance(data, dict):
+                if data.get('title') == "findColorSet":
+                    color = data.get('data', [0, 0, 0])
+                    flask_app.colorFindSet(color[0], color[1], color[2])
+                
+                if async_loop and connected_clients:
+                    asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
+            
+            # Send response back to TCP client
+            response_str = json.dumps(response)
+            tcpCliSock.sendall(response_str.encode())
+        except Exception as e:
+            print(f"[TCP SERVER EVENT] Desktop Client {addr} errore o disconnessione: {e}")
+            break
+    try:
+        tcpCliSock.close()
+    except Exception:
+        pass
+    print(f"[TCP SERVER] Connessione con {addr} chiusa.")
+
 def run_tcp_server():
     HOST = '0.0.0.0'
     PORT = 10223
-    BUFSIZ = 1024
     
     tcpSerSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     tcpSerSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -575,96 +668,11 @@ def run_tcp_server():
     while True:
         try:
             tcpCliSock, addr = tcpSerSock.accept()
-            print(f"[TCP SERVER] Desktop Client connected from {addr}")
-            
-            while True:
-                data = tcpCliSock.recv(BUFSIZ).decode()
-                if not data:
-                    break
-                
-                response = {
-                    'status': 'ok',
-                    'title': '',
-                    'data': None
-                }
-                
-                try:
-                    data_parsed = json.loads(data)
-                    data = data_parsed
-                except Exception:
-                    pass
-                
-                if isinstance(data, str):
-                    robotCtrl(data, response)
-                    switchCtrl(data, response)
-                    functionSelect(data, response)
-                    configPWM(data, response)
-                    
-                    if 'get_info' == data:
-                        response['title'] = 'get_info'
-                        response['data'] = [info.get_cpu_tempfunc(), info.get_cpu_use(), info.get_ram_info()]
-                    
-                    if 'wsB' in data:
-                        try:
-                            set_B = data.split()
-                            global speed_set
-                            speed_set = int(set_B[1])
-                        except Exception:
-                            pass
-                            
-                    elif 'CVFL' == data:
-                        camera_opencv.FLCV_Status = 0
-                        flask_app.modeselect('findlineCV')
-                        if OLED_connection:
-                            screen.screen_show(5,'CVLine')
-
-                    elif 'CVFLColorSet' in data:
-                        try:
-                            color = int(data.split()[1])
-                            flask_app.camera.colorSet(color)
-                        except Exception:
-                            pass
-
-                    elif 'CVFLL1' in data:
-                        try:
-                            pos = int(data.split()[1])
-                            flask_app.camera.linePosSet_1(pos)
-                        except Exception:
-                            pass
-
-                    elif 'CVFLL2' in data:
-                        try:
-                            pos = int(data.split()[1])
-                            flask_app.camera.linePosSet_2(pos)
-                        except Exception:
-                            pass
-
-                    elif 'CVFLSP' in data:
-                        try:
-                            err = int(data.split()[1])
-                            flask_app.camera.errorSet(err)
-                        except Exception:
-                            pass
-
-                    # Broadcast the command to all active WebSocket clients (like the 2D simulator)
-                    if data != 'get_info' and async_loop and connected_clients:
-                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
-
-                elif isinstance(data, dict):
-                    if data.get('title') == "findColorSet":
-                        color = data.get('data', [0, 0, 0])
-                        flask_app.colorFindSet(color[0], color[1], color[2])
-                    
-                    # Broadcast the dictionary command to WebSocket clients
-                    if async_loop and connected_clients:
-                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
-                
-                # Send response back to TCP client
-                response_str = json.dumps(response)
-                tcpCliSock.sendall(response_str.encode())
-            tcpCliSock.close()
+            t = threading.Thread(target=handle_tcp_client, args=(tcpCliSock, addr))
+            t.setDaemon(True)
+            t.start()
         except Exception as e:
-            print(f"[TCP SERVER EVENT] Desktop Client disconnected or error: {e}")
+            print(f"[TCP SERVER ERROR] Accept error: {e}")
 
 if __name__ == '__main__':
     switch.switchSetup()
