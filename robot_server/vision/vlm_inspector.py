@@ -11,11 +11,11 @@ class VLMInspector:
         self.timeout = timeout
         self.category_map = [
             {"id": "tavolo_pranzo", "keys": ["dining table", "kitchen table", "tabletop", "table top", "dining", "table", "tavolo", "tavolina", "tavolino", "tavola", "scrivania", "desk", "worktable", "coffee table", "dinner table", "eating table", "eating area", "dining room", "food table", "lunch table", "breakfast table", "wood table", "wooden table", "wooden surface", "wood surface", "table legs", "surface", "workstation"], "display": "Tavolo da Pranzo", "icon": "🍽️", "type": "TABLE"},
-            {"id": "piano_cottura", "keys": ["cooktop", "stove", "sink", "faucet", "cucina", "lavello", "piano cottura", "countertop", "oven", "range", "burner", "kitchen counter", "kitchen sink"], "display": "Piano Cottura / Lavello", "icon": "🍳", "type": "KITCHEN"},
-            {"id": "frigorifero", "keys": ["refrigerator", "fridge", "frigorifero", "cooler", "freezer", "frigo", "appliance", "cooling unit", "kitchen appliance", "tall unit", "cold box", "metallic appliance", "white appliance", "silver fridge"], "display": "Frigorifero", "icon": "🧊", "type": "APPLIANCE"},
-            {"id": "credenza", "keys": ["sideboard", "credenza", "cabinet", "cupboard", "bookcase", "shelf", "libreria", "dresser", "shelf unit", "storage unit", "cassettiera"], "display": "Mobile / Credenza", "icon": "🗄️", "type": "STORAGE"},
+            {"id": "piano_cottura", "keys": ["cooktop", "stove", "sink", "faucet", "cucina", "lavello", "piano cottura", "countertop", "oven", "range", "burner", "kitchen counter", "kitchen sink", "kitchenette", "cooking area", "induction hob", "gas burner", "kitchen unit", "kitchen"], "display": "Piano Cottura / Lavello", "icon": "🍳", "type": "KITCHEN"},
+            {"id": "frigorifero", "keys": ["refrigerator", "fridge", "frigorifero", "cooler", "freezer", "frigo", "appliance", "cooling unit", "kitchen appliance", "tall unit", "cold box", "metallic appliance", "white appliance", "silver fridge", "icebox", "tall cabinet", "refrigeration unit"], "display": "Frigorifero", "icon": "🧊", "type": "APPLIANCE"},
+            {"id": "credenza", "keys": ["sideboard", "credenza", "cabinet", "cupboard", "bookcase", "shelf", "libreria", "dresser", "shelf unit", "storage unit", "cassettiera", "display cabinet", "credenza unit", "buffet", "wall unit", "wooden cabinet", "chest of drawers", "closet"], "display": "Mobile / Credenza", "icon": "🗄️", "type": "STORAGE"},
             {"id": "penisola", "keys": ["kitchen island", "peninsula", "bar stool", "sgabello da bar", "bancone", "breakfast bar", "island"], "display": "Penisola / Bancone", "icon": "🍸", "type": "COUNTER"},
-            {"id": "divano", "keys": ["sofa", "couch", "armchair", "divano", "poltrona", "canapè", "divanetto", "lounge", "seating unit", "living room sofa"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
+            {"id": "divano", "keys": ["sofa", "couch", "armchair", "divano", "poltrona", "settee", "sectional", "loveseat", "futon", "upholstered", "cushioned seat", "living room seating", "lounge seating", "canapè", "divanetto", "lounge", "seating unit", "living room sofa", "padded seat", "sitting area", "chesterfield", "chaise lounge", "fabric sofa"], "display": "Divano / Poltrona", "icon": "🛋️", "type": "SEATING"},
             {"id": "letto", "keys": ["bed", "mattress", "letto", "lettino"], "display": "Letto", "icon": "🛏️", "type": "BED"},
             {"id": "sedia", "keys": ["chair", "stool", "sedia", "sgabello", "poltroncina", "seggiola", "seat", "seating", "bench", "panca"], "display": "Sedia / Sgabello", "icon": "🪑", "type": "CHAIR"},
             {"id": "tv", "keys": ["television", "tv", "monitor", "screen", "schermo", "display"], "display": "TV / Schermo", "icon": "📺", "type": "SCREEN"},
@@ -53,11 +53,7 @@ class VLMInspector:
         if ',' in base64_image_data:
             base64_image_data = base64_image_data.split(',', 1)[1]
 
-        prompt_text = (
-            "Identify the main object or furniture visible in this image. "
-            "For example: dining table, desk, chair, sofa, bed, refrigerator, stove, cabinet, counter, or door. "
-            "Output the concise object name."
-        )
+        prompt_text = "Describe the furniture or object in this image."
         payload = {
             "model": self.model,
             "prompt": prompt_text,
@@ -71,6 +67,7 @@ class VLMInspector:
                 raw_text = resp.json().get("response", "").strip()
                 if raw_text:
                     cat = self._match_category(raw_text)
+                    print(f"👁️ [VLM INFERENCE] Raw: '{raw_text[:90]}...' -> Matched: {cat['display'] if cat else 'NON RICONOSCIUTO'}")
                     if cat:
                         return {
                             "landmarks": [{

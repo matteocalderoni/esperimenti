@@ -51,11 +51,27 @@ function drawOccupancyMap() {
 }
 
 let modalShown = false, modalDismissed = false;
-function showCompletionModal(pct) {
+function showCompletionModal(pct, mode) {
   if (modalShown || modalDismissed) return;
   modalShown = true;
-  var overlay = document.getElementById('completionModal'), pctEl = document.getElementById('modalExploredPct');
-  if (pctEl) pctEl.innerText = `${pct}%`;
+  var overlay = document.getElementById('completionModal');
+  var titleEl = overlay ? overlay.querySelector('.modal-title') : null;
+  var descEl = overlay ? overlay.querySelector('.modal-desc') : null;
+  var pctEl = document.getElementById('modalExploredPct');
+  var tourBtn = document.getElementById('modalStartTourBtn');
+
+  if (mode === 'tour') {
+    if (titleEl) titleEl.innerText = '🎉 Tour Riconoscimento Arredi Concluso!';
+    if (pctEl) pctEl.innerText = '5 / 5 ARREDI';
+    if (descEl) descEl.innerHTML = 'Tutti gli arredi rilevati dallo SLAM sono stati ispezionati da vicino e catalogati con successo. Visualizza la galleria foto o la pianta tecnica.';
+    if (tourBtn) tourBtn.style.display = 'none';
+  } else {
+    if (titleEl) titleEl.innerText = '📐 Rilievo Metrico & Quote Completati!';
+    if (pctEl) pctEl.innerText = `${pct}% RILEVATO`;
+    if (descEl) descEl.innerHTML = 'L\'ambiente è stato completamente mappato e non ci sono più frontiere aperte. Le quote CAD sono state calcolate.<br><br>👉 <strong>Puoi ora avviare la Fase 2: Riconoscimento Arredi (VLM)!</strong>';
+    if (tourBtn) tourBtn.style.display = 'block';
+  }
+
   if (overlay) overlay.classList.add('active');
 }
 

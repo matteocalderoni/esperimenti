@@ -97,7 +97,7 @@ class RoomExplorerBehavior(BaseBehavior):
             if not target:
                 frontiers = self.planner.find_frontiers(self.grid.grid)
                 if frontiers:
-                    ranked = self.planner.rank_frontiers(frontiers, self.grid.grid, (gx, gy))
+                    ranked = self.planner.rank_frontiers(frontiers, self.grid.grid, (gx, gy), self.current_pose.get('theta', 0.0))
                     target = ranked[0]
                 else:
                     target = self.planner.find_hunter_target(self.grid.grid, dilated, (gx, gy))
@@ -123,7 +123,7 @@ class RoomExplorerBehavior(BaseBehavior):
                     move.move(50, 1, "mid")
                     time.sleep(0.3)
                 move.motorStop()
-            if self.path_index >= min(4, len(self.current_path) - 1):
+            if self.path_index >= len(self.current_path) - 1:
                 self.fsm_state = 'SCAN_360'
 
         time.sleep(0.05)

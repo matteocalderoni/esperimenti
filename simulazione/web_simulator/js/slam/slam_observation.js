@@ -38,9 +38,11 @@ function findObservationPose(cur, target, dGrid) {
   for (var dy = -r; dy <= r; dy++) {
     for (var dx = -r; dx <= r; dx++) {
       var gx = target.gx + dx, gy = target.gy + dy;
-      if (gy <= 0 || gy >= slamMap.height - 1 || gx <= 0 || gx >= slamMap.width - 1) continue;
+      // Mantieni distanza di sicurezza di almeno 3 celle da tutte le pareti perimetrali
+      if (gy < 3 || gy >= slamMap.height - 3 || gx < 3 || gx >= slamMap.width - 3) continue;
       if (slamMap.grid[gy][gx] !== 0) continue;     // deve essere spazio libero noto
-      if (dGrid[gy][gx] === 1) continue;            // deve starci il telaio
+      if (dGrid[gy][gx] === 1) continue;            // deve starci il telaio dilatato
+      if (Math.hypot(dx, dy) < 2.5) continue;       // non sostare troppo a ridosso del target
       if (gx === cur.gx && gy === cur.gy) continue; // gia' qui: non aggiunge nulla
       if (!hasSlamLineOfSight(gx, gy, target.gx, target.gy)) continue;
 

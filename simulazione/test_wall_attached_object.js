@@ -47,8 +47,9 @@ function testWallAttachedObjectRecognition() {
   // 1. Devono esserci cluster d'arredo rilevati
   assert.ok(clusters.length >= 2, `Attesi almeno 2 cluster d'arredo, trovati ${clusters.length}`);
   
-  // 2. I landmark semantici devono essere mappati sulla piantina 2D
-  assert.ok(sim.slamMap.semanticLandmarks.length >= 2, `Attesi almeno 2 landmark semantici, trovati ${sim.slamMap.semanticLandmarks.length}`);
+  // 2. Almeno uno dei cluster deve essere rilevato come addossato a parete (isWallAttached)
+  const hasWallAttached = clusters.some(c => c.isWallAttached);
+  assert.ok(hasWallAttached, 'Almeno un arredo deve essere riconosciuto come addossato alla parete perimetrale');
 
   console.log('\n✅ TEST ARREDO A PARETE SUPERATO CON SUCCESSO!');
 }

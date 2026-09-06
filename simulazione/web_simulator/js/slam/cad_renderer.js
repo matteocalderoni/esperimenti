@@ -120,8 +120,8 @@ function renderCadBlueprint(ctx, w, h) {
   ctx.strokeStyle = dark ? '#00f0ff' : '#0f172a'; ctx.beginPath(); ctx.moveTo(bx + 4, by + 20); ctx.lineTo(bx + bw - 4, by + 20); ctx.stroke();
   ctx.font = '8px monospace'; ctx.fillStyle = dark ? '#94a3b8' : '#334155';
   ctx.fillText('METODO: Perimetri Rilevati da Sensore + Nomi VLM', bx + 8, by + 32);
-  ctx.fillText('ARREDI VLM: ' + (slamMap.semanticLandmarks || []).length + ' identificati (Ollama)', bx + 8, by + 44);
-  ctx.fillText('STATO: ' + (slamMap.stats.exploredPct >= 99 ? '✅ RILIEVO 99% ULTIMATO' : '⏳ RILIEVO IN CORSO (' + slamMap.stats.exploredPct + '%)'), bx + 8, by + 56);
+  var isDone = (slamMap.fsmState === 'COMPLETE' || slamMap.stats.exploredPct >= 95);
+  ctx.fillText('STATO: ' + (isDone ? '✅ RILIEVO ULTIMATO' : '⏳ RILIEVO IN CORSO (' + slamMap.stats.exploredPct + '%)'), bx + 8, by + 56);
 }
 
 function drawSurveyorDimensions(ctx, w, h) {

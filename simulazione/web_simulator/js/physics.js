@@ -12,7 +12,7 @@ function updatePhysics(dt) {
 
   // 3. Esecuzione automazioni (solo in modalità JS Experimental)
   if (robotState.engineMode === 'JS') {
-    executeJSBehaviors();
+    executeJSBehaviors(dt);
   }
 
   // 4. Effetti LED Stroboscopici Polizia
@@ -27,7 +27,7 @@ function updatePhysics(dt) {
   updateTelemetryUI();
 }
 
-function executeJSBehaviors() {
+function executeJSBehaviors(dt) {
   const mode = robotState.activeMode;
   if (mode === 'PT') return;
 
@@ -38,8 +38,8 @@ function executeJSBehaviors() {
     return;
   }
 
-  // 2. Guardia Ostacoli APF (attiva solo nelle modalità reattive, NON in exploration che ha il suo pathfinder A*)
-  if (mode !== 'exploration') {
+  // 2. Guardia Ostacoli APF (attiva solo nelle modalità reattive, NON in exploration né inspectionTour con A*)
+  if (mode !== 'exploration' && mode !== 'inspectionTour') {
     let guardOptions = {};
     if (mode === 'findColor') guardOptions = { dInfluence: 0.40, stopThreshold: 0.20 };
     else if (mode === 'trackLight') guardOptions = { dInfluence: 0.35, stopThreshold: 0.20 };
@@ -53,7 +53,7 @@ function executeJSBehaviors() {
   // 3. Esecuzione del comportamento specifico della modalità
   const behavior = jsBehaviors[mode];
   if (behavior) {
-    behavior();
+    behavior(dt);
   }
 }
 

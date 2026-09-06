@@ -61,18 +61,27 @@ function dwaNormalizeAngle(a) {
  * nuova: la manovra e' sempre geometricamente sicura), infine si arretra.
  */
 function dwaEscape(goalAngle, dt) {
-  if (dt === undefined) dt = SIM_DT;
+  if (dt === undefined) dt = (typeof SIM_DT !== 'undefined') ? SIM_DT : 0.016;
   var fermo = Math.abs(robotState.speed) < DWA.minSpeedFloor;
+  var diff = dwaNormalizeAngle(goalAngle - robotState.angle);
 
   if (!fermo) {
-    // Frenata di emergenza: decelerazione tripla, ma finita.
-    var v = Math.max(0, robotState.speed - 3 * DWA.accSpeed * dt);
-    return { speed: v, steering: 0 };
+    // Decelerazione controllata continuando a sterzare con decisione verso la rotta
+    var v = Math.max(0, robotState.speed - 2.5 * DWA.accSpeed * dt);
+    var maxW = dwaMaxSteerFor(Math.max(v, DWA.minSpeedFloor));
+    var w = Math.max(-maxW, Math.min(maxW, diff * 3.0));
+    return { speed: v, steering: w };
   }
 
-  var diff = dwaNormalizeAngle(goalAngle - robotState.angle);
-  if (Math.abs(diff) > 0.15) {
+  // Se il disallineamento è notevole (> 55° / ~0.95 rad), riallinea sul posto dolcemente
+  if (Math.abs(diff) > 0.95) {
     return { speed: 0, steering: (diff > 0 ? 1 : -1) * DWA.pivotRate };
+  }
+
+  // Se il disallineamento è moderato (fra 25° e 55°), avanza a velocità minima sterzando
+  if (Math.abs(diff) > 0.40) {
+    var maxW = dwaMaxSteerFor(20);
+    return { speed: 20, steering: (diff > 0 ? 1 : -1) * maxW };
   }
 
   // Gia' allineato al goal e comunque bloccato: si arretra verso il lato libero.

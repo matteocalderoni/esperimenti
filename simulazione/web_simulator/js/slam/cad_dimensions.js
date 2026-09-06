@@ -59,6 +59,7 @@ function analyzeRoomGeometry() {
 function openBlueprintModal() {
   var modal = document.getElementById('blueprintModal'), cv = document.getElementById('blueprintCanvas');
   if (!modal || !cv || !slamMap || !slamMap.grid) return;
+  if (typeof solidifyClusterInteriors === 'function') solidifyClusterInteriors(slamMap);
   cv.width = 880; cv.height = 640;
   var bCtx = cv.getContext('2d');
   if (typeof renderCadBlueprint === 'function') renderCadBlueprint(bCtx, cv.width, cv.height);

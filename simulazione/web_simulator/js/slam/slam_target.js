@@ -2,18 +2,29 @@
 // Selezione dell'Obiettivo di Esplorazione & Ispezione Ravvicinata VLM
 
 function slamNoProgress() {
+  // Non si può mai dichiarare stallo a fine gara se la stanza non è ancora esplorata al 75%
+  if (!slamMap.stats || slamMap.stats.exploredPct < 75) return false;
   var frontiers = slamMap.frontiers || [];
-  if (frontiers.length > 0 && slamMap.stats.exploredPct < 90) {
-    slamMap.noProgressRounds = 0;
-    return false;
+  if (frontiers.length === 0) {
+    if (typeof findHunterTarget === 'function') {
+      var cur = (typeof slamWorldToGrid === 'function' && typeof robotState !== 'undefined')
+        ? slamWorldToGrid(robotState.x, robotState.y) : { gx: 35, gy: 26 };
+      var hunter = findHunterTarget(cur, (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : null);
+      if (hunter) return false;
+    }
+    return true;
   }
+
   if (slamMap.stats.exploredPct > (slamMap.lastProgressPct || 0)) {
     slamMap.lastProgressPct = slamMap.stats.exploredPct;
     slamMap.noProgressRounds = 0;
     return false;
   }
   slamMap.noProgressRounds = (slamMap.noProgressRounds || 0) + 1;
-  if (slamMap.noProgressRounds > 35) { slamMap.noProgressRounds = 0; return true; }
+  if (slamMap.noProgressRounds > 30) {
+    slamMap.noProgressRounds = 0;
+    return true;
+  }
   return false;
 }
 
@@ -42,48 +53,77 @@ function isSafeOpenSpaceTarget(dGrid, tx, ty) {
 
 function findUnrecognizedObstacleTarget(cur) {
   if (!slamMap || !slamMap.grid) return null;
-  var W = getArenaW(), H = getArenaH();
-  var landmarks = slamMap.semanticLandmarks || [];
-  var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
+  var W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+  var H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
   var clusters = (typeof findSlamClusters === 'function') ? findSlamClusters(true) : [];
+  var bestPose = null, bestDist = 9999;
+  var nowTime = Date.now();
 
-  for (var gy = 4; gy < slamMap.height - 4; gy += 3) {
-    for (var gx = 4; gx < slamMap.width - 4; gx += 3) {
-      if (slamMap.grid[gy][gx] === 1) {
-        var worldX = (gx / slamMap.width) * W, worldY = (gy / slamMap.height) * H;
-        
-        // Verifica se l'ostacolo appartiene a un cluster abbandonato o già verificato
-        var isAbandonedOrVerified = clusters.some(function(c) {
-          var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
-          var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
-          var near = Math.hypot(cX - worldX, cY - worldY) < 60;
-          return near && (c.vlmAbandoned === true || (c.vlmAttempts || 0) >= 3);
-        });
-        if (isAbandonedOrVerified) continue;
+  for (var i = 0; i < clusters.length; i++) {
+    var c = clusters[i];
+    var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
+    var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
+    if (cX <= 30 || cX >= W - 30 || cY <= 30 || cY >= H - 30) continue;
+    if (typeof isClusterVlmVerified === 'function' && isClusterVlmVerified(cX, cY)) continue;
+    if (typeof isClusterAbandoned === 'function' && isClusterAbandoned(cX, cY)) continue;
 
-        var isRecognized = landmarks.some(function(lm) { return Math.hypot(lm.x - worldX, lm.y - worldY) < 55 && lm.vlmVerified === true; });
-        if (!isRecognized) {
-          var candidates = [
-            { x: gx, y: gy - 4 }, { x: gx, y: gy + 4 },
-            { x: gx - 4, y: gy }, { x: gx + 4, y: gy }
-          ];
-          for (var ci = 0; ci < candidates.length; ci++) {
-            var cand = candidates[ci];
-            if (isSafeOpenSpaceTarget(dGrid, cand.x, cand.y) && !isRecentlyVisitedTarget(cand.x, cand.y)) {
-              return cand;
-            }
-          }
+    var key = (typeof getClusterKey === 'function') ? getClusterKey(cX, cY) : '';
+    var lastAttempt = (slamMap.clusterTracking && slamMap.clusterTracking[key]) ? slamMap.clusterTracking[key].lastTime : 0;
+    if (nowTime - lastAttempt < 3000) continue; // Cooldown 3s tra tentativi dello stesso cluster
+
+    if (typeof getOptimalInspectionPose === 'function') {
+      var pose = getOptimalInspectionPose(c);
+      if (pose && !isRecentlyVisitedTarget(pose.gx, pose.gy)) {
+        var d = Math.hypot(pose.worldX - robotState.x, pose.worldY - robotState.y);
+        if (d < bestDist) {
+          bestDist = d;
+          bestPose = pose;
         }
       }
     }
   }
-  return null;
+  return bestPose;
+}
+
+/**
+ * Verifica se la frontiera corrente è ancora attiva (ha celle sconosciute adiacenti e non è stata ancora raggiunta)
+ */
+function isFrontierStillActive(cur, f) {
+  if (!f || !slamMap.grid) return false;
+  // Distanza su griglia: se siamo a meno di 2.5 celle (~50 px), è considerata raggiunta
+  var d = Math.hypot(f.gx - cur.gx, f.gy - cur.gy);
+  if (d < 2.5) return false;
+
+  // Verifica se ci sono ancora celle sconosciute (-1) nelle vicinanze della frontiera
+  var unexp = 0;
+  for (var dy = -2; dy <= 2; dy++) {
+    for (var dx = -2; dx <= 2; dx++) {
+      var ny = f.gy + dy, nx = f.gx + dx;
+      if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width) {
+        if (slamMap.grid[ny][nx] === -1) unexp++;
+      }
+    }
+  }
+  return unexp >= 2;
 }
 
 function planSlamExplorationPath(cur) {
   var path = [];
+  slamMap.targetInspectionCluster = null;
 
-  // 1. Ranking Frontiere per Information Gain (Esplorazione ad Ampio Raggio per Tutta la Stanza)
+  // 0. TARGET COMMITMENT (Hysteresis):
+  // Se abbiamo già un target frontiera attivo, non è ancora raggiunto ed è ancora inesplorato,
+  // continuiamo a puntare verso di esso per evitare il tipico "chattering / oscillazione continua di rotta".
+  if (slamMap.targetFrontier && isFrontierStillActive(cur, slamMap.targetFrontier)) {
+    path = planAdaptiveSlamAStar(cur, slamMap.targetFrontier);
+    if (path && path.length > 1) {
+      return path;
+    }
+  }
+  // Altrimenti il target precedente è esaurito o non più raggiungibile: ne selezioniamo uno nuovo
+  slamMap.targetFrontier = null;
+
+  // 1. Ranking Frontiere con Heading-Awareness e Information Gain
   var frontiers = slamMap.frontiers || [];
   var ranked = (typeof rankFrontiersByBlindness === 'function')
     ? rankFrontiersByBlindness(cur, frontiers) : frontiers;
@@ -100,7 +140,7 @@ function planSlamExplorationPath(cur) {
     }
   }
 
-  // 1b. Fallback: Prova qualsiasi frontiera raggiungibile anche se in cooldown
+  // 2. Fallback: Qualsiasi frontiera raggiungibile
   for (var fi2 = 0; fi2 < Math.min(40, ranked.length); fi2++) {
     var f2 = ranked[fi2];
     path = planAdaptiveSlamAStar(cur, f2);
@@ -111,7 +151,7 @@ function planSlamExplorationPath(cur) {
     }
   }
 
-  // 2. Percorso Boustrophedon di Copertura Spazio Aperto
+  // 3. Copertura Boustrophedon per aree aperte
   if (typeof generateBoustrophedonPath === 'function' && !slamMap.boustrophedonDone) {
     var bPath = generateBoustrophedonPath(3);
     if (bPath && bPath.length > 2) {
@@ -127,17 +167,6 @@ function planSlamExplorationPath(cur) {
         }
       }
       slamMap.boustrophedonDone = true;
-    }
-  }
-
-  // 3. Ispezione Proattiva Ostacoli Non Ancora Riconosciuti (solo se non ci sono frontiere aperte)
-  var unrecTarget = findUnrecognizedObstacleTarget(cur);
-  if (unrecTarget && !isRecentlyVisitedTarget(unrecTarget.x, unrecTarget.y)) {
-    var unrecPath = planAdaptiveSlamAStar(cur, unrecTarget);
-    if (unrecPath && unrecPath.length > 1) {
-      slamMap.targetFrontier = unrecTarget;
-      markTargetAsVisited(unrecTarget.x, unrecTarget.y);
-      return unrecPath;
     }
   }
 

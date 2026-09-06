@@ -23,14 +23,17 @@ function updateKinematics(dt) {
   if (robotState.y < margin) { robotState.y = margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
   if (robotState.y > arenaH - margin) { robotState.y = arenaH - margin; robotState.speed = -20; robotState.angle += 1.5 * dt; }
 
-  // 3. Cuscinetto di sicurezza soft di vicinanza (Soft Proximity Safety Buffer 18px)
   const carR = CAR_RADIUS_PX;
-  const softBuf = 18;
-  for (const w of arenaObjects.walls) {
-    if (robotState.x + carR + softBuf > w.x && robotState.x - carR - softBuf < w.x + w.w &&
-        robotState.y + carR + softBuf > w.y && robotState.y - carR - softBuf < w.y + w.h) {
-      if (robotState.speed > 25) robotState.speed *= 0.35;
-      if (robotState.speed > 10) robotState.speed = 10;
+
+  // 3. Cuscinetto di sicurezza soft di vicinanza (attivo solo per modalità reattive/manuali, non per SLAM pianificato)
+  if (robotState.activeMode !== 'exploration' && robotState.activeMode !== 'inspectionTour') {
+    const softBuf = 18;
+    for (const w of arenaObjects.walls) {
+      if (robotState.x + carR + softBuf > w.x && robotState.x - carR - softBuf < w.x + w.w &&
+          robotState.y + carR + softBuf > w.y && robotState.y - carR - softBuf < w.y + w.h) {
+        if (robotState.speed > 25) robotState.speed *= 0.35;
+        if (robotState.speed > 10) robotState.speed = 10;
+      }
     }
   }
 

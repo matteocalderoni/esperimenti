@@ -54,98 +54,195 @@ function recordClusterAttempt(cX, cY) {
   rec.attempts += 1;
   rec.lastTime = Date.now();
 
-  if (rec.attempts >= 3) {
+  if (rec.attempts >= 5) {
     rec.abandoned = true;
+    rec.verified = true;
     registerUnknownObstacleLandmark(cX, cY);
   }
 }
 
-function registerUnknownObstacleLandmark(cX, cY) {
+function registerUnknownObstacleLandmark(cX, cY, cluster) {
   if (!slamMap) return;
   if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
+  var W = typeof getArenaW === 'function' ? getArenaW() : 2100;
+  var H = typeof getArenaH === 'function' ? getArenaH() : 1560;
+
+  var wPx = 200, hPx = 200;
+  if (cluster) {
+    wPx = Math.max(50, Math.round(((cluster.maxX - cluster.minX) / slamMap.width) * W));
+    hPx = Math.max(50, Math.round(((cluster.maxY - cluster.minY) / slamMap.height) * H));
+    cluster.vlmVerified = true;
+    cluster.vlmAbandoned = true;
+  }
+
+  var clKey = getClusterKey(cX, cY);
+  if (!slamMap.clusterTracking) slamMap.clusterTracking = {};
+  if (!slamMap.clusterTracking[clKey]) slamMap.clusterTracking[clKey] = {};
+  slamMap.clusterTracking[clKey].verified = true;
+  slamMap.clusterTracking[clKey].abandoned = true;
 
   var existingIdx = slamMap.semanticLandmarks.findIndex(function(lm) {
-    return Math.hypot(lm.x - cX, lm.y - cY) < 65;
+    return Math.hypot(lm.x - cX, lm.y - cY) < 70;
   });
 
   var entry = {
     id: 'obj_unknown_' + Math.round(cX) + '_' + Math.round(cY),
     type: 'UNKNOWN',
-    name: '📦 Ostacolo Sconosciuto',
-    label: '📦 Ostacolo Sconosciuto',
-    display: '📦 Ostacolo Sconosciuto',
+    name: '📦 Oggetto Sconosciuto',
+    label: '📦 Oggetto Sconosciuto',
+    display: '📦 Oggetto Sconosciuto',
     icon: '📦',
     x: cX,
     y: cY,
-    w: 200,
-    h: 200,
+    w: wPx,
+    h: hPx,
     vlmVerified: true,
     vlmAbandoned: true,
     isStaticWall: false
   };
 
   if (existingIdx >= 0) {
-    if (!slamMap.semanticLandmarks[existingIdx].vlmVerified) {
-      slamMap.semanticLandmarks[existingIdx] = entry;
-    }
+    slamMap.semanticLandmarks[existingIdx] = entry;
   } else {
     slamMap.semanticLandmarks.push(entry);
   }
+  console.log('📦 [VLM Fallback] Arredo a (' + Math.round(cX) + ', ' + Math.round(cY) + ') registrato come "📦 Oggetto Sconosciuto"');
 }
 
 function isClusterVlmVerified(cX, cY) {
-  if (!slamMap || !slamMap.semanticLandmarks) return false;
+  if (!slamMap) return false;
   if (isClusterAbandoned(cX, cY)) return true;
+  var key = getClusterKey(cX, cY);
+  if (slamMap.clusterTracking && slamMap.clusterTracking[key] && slamMap.clusterTracking[key].verified) return true;
+  if (!slamMap.semanticLandmarks) return false;
   return slamMap.semanticLandmarks.some(function(lm) {
-    return Math.hypot(lm.x - cX, lm.y - cY) < 65 && lm.vlmVerified === true;
+    return Math.hypot(lm.x - cX, lm.y - cY) < 85 && lm.vlmVerified === true;
   });
+}
+
+/**
+ * Calcola una posa di osservazione ottimale nello spazio libero di fronte all'arredo
+ * a distanza ravvicinata (~95px / 1 metro) con linea di vista diretta.
+ */
+function getOptimalInspectionPose(cluster) {
+  if (!cluster || !slamMap || !slamMap.grid) return null;
+  var W = (typeof getArenaW === 'function') ? getArenaW() : 2100;
+  var H = (typeof getArenaH === 'function') ? getArenaH() : 1560;
+  var minWx = (cluster.minX / slamMap.width) * W;
+  var maxWx = (cluster.maxX / slamMap.width) * W;
+  var minWy = (cluster.minY / slamMap.height) * H;
+  var maxWy = (cluster.maxY / slamMap.height) * H;
+  var cX = (minWx + maxWx) / 2;
+  var cY = (minWy + maxWy) / 2;
+
+  var dGrid = (typeof getDilatedSlamGrid === 'function') ? getDilatedSlamGrid() : slamMap.grid;
+  var standoffs = [95, 115, 135, 75];
+  var bestPose = null, bestDist = 9999;
+
+  for (var s = 0; s < standoffs.length; s++) {
+    var standoff = standoffs[s];
+    // Pose ortogonali rispetto alle facce dell'arredo + opzioni diagonali
+    var candidates = [
+      { px: cX, py: minWy - standoff, targetX: cX, targetY: minWy }, // Nord
+      { px: cX, py: maxWy + standoff, targetX: cX, targetY: maxWy }, // Sud
+      { px: minWx - standoff, py: cY, targetX: minWx, targetY: cY }, // Ovest
+      { px: maxWx + standoff, py: cY, targetX: maxWx, targetY: cY }, // Est
+      { px: minWx - standoff * 0.8, py: minWy - standoff * 0.8, targetX: minWx, targetY: minWy },
+      { px: maxWx + standoff * 0.8, py: minWy - standoff * 0.8, targetX: maxWx, targetY: minWy },
+      { px: minWx - standoff * 0.8, py: maxWy + standoff * 0.8, targetX: minWx, targetY: maxWy },
+      { px: maxWx + standoff * 0.8, py: maxWy + standoff * 0.8, targetX: maxWx, targetY: maxWy }
+    ];
+
+    for (var i = 0; i < candidates.length; i++) {
+      var cand = candidates[i];
+      if (cand.px < 50 || cand.px >= W - 50 || cand.py < 50 || cand.py >= H - 50) continue;
+      var g = slamWorldToGrid(cand.px, cand.py);
+      if (dGrid[g.gy] && dGrid[g.gy][g.gx] === 0) {
+        var dRobot = Math.hypot(cand.px - robotState.x, cand.py - robotState.y);
+        if (dRobot < bestDist) {
+          bestDist = dRobot;
+          bestPose = {
+            gx: g.gx,
+            gy: g.gy,
+            worldX: cand.px,
+            worldY: cand.py,
+            targetAngle: Math.atan2(cand.targetY - cand.py, cand.targetX - cand.px),
+            cluster: cluster,
+            cX: cX,
+            cY: cY
+          };
+        }
+      }
+    }
+    if (bestPose) break;
+  }
+  return bestPose;
 }
 
 async function triggerStationaryVlmInspection(forcedCluster) {
   if (vlmInspecting) return;
   if (typeof THREE === 'undefined') return;
 
-  var W = typeof getArenaW === 'function' ? getArenaW() : 700;
-  var H = typeof getArenaH === 'function' ? getArenaH() : 520;
+  var W = typeof getArenaW === 'function' ? getArenaW() : 2100;
+  var H = typeof getArenaH === 'function' ? getArenaH() : 1560;
 
-  // 0. Ricerca cluster ostacolo isolato a centro stanza per puntamento dinamico della fotocamera
   var clusters = (typeof findSlamClusters === 'function') ? findSlamClusters(true) : [];
   var closestCluster = forcedCluster || null;
 
   if (!closestCluster) {
-    var minClusterDist = 999;
+    var minEdgeDist = 120;
     clusters.forEach(function(c) {
-      var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
-      var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
-      if (cX <= 20 || cX >= W - 20 || cY <= 20 || cY >= H - 20) return;
-      if (isClusterVlmVerified(cX, cY)) return; // Salva tempo se il cluster e' gia' stato confermato
-      var d = Math.hypot(cX - robotState.x, cY - robotState.y);
-      if (d < minClusterDist) {
-        minClusterDist = d;
+      var minWx = (c.minX / slamMap.width) * W;
+      var maxWx = (c.maxX / slamMap.width) * W;
+      var minWy = (c.minY / slamMap.height) * H;
+      var maxWy = (c.maxY / slamMap.height) * H;
+      var cX = (minWx + maxWx) / 2;
+      var cY = (minWy + maxWy) / 2;
+      if (cX <= 25 || cX >= W - 25 || cY <= 25 || cY >= H - 25) return;
+      if (isClusterVlmVerified(cX, cY)) return;
+      var dx = Math.max(minWx - robotState.x, 0, robotState.x - maxWx);
+      var dy = Math.max(minWy - robotState.y, 0, robotState.y - maxWy);
+      var ed = Math.hypot(dx, dy);
+      if (ed < minEdgeDist) {
+        minEdgeDist = ed;
         closestCluster = c;
       }
     });
   }
 
-  var cX = closestCluster ? (((closestCluster.minX + closestCluster.maxX) / 2 / slamMap.width) * W) : null;
-  var cY = closestCluster ? (((closestCluster.minY + closestCluster.maxY) / 2 / slamMap.height) * H) : null;
+  if (!closestCluster) return;
 
-  // Se rilevato un cluster d'arredo, orienta il robot (heading) ed il servo pan direttamente al suo centroide per un puntamento VLM perfetto
-  if (closestCluster && cX !== null && cY !== null) {
-    var angleToCentroid = Math.atan2(cY - robotState.y, cX - robotState.x);
-    // Allinea l'orientamento frontale del robot direttamente al centro dell'oggetto
-    robotState.angle = angleToCentroid;
-    
-    // Variazione dinamica dell'angolo pan ad ogni tentativo (0°, -20°, +20°, -35°, +35°) per inquadrature prospettiche diverse
-    var offsets = [0, -20, 20, -35, 35];
-    var attemptIdx = Math.max(0, (closestCluster.vlmAttempts || 1) - 1);
-    var panOffset = offsets[attemptIdx % offsets.length];
+  var minWx = (closestCluster.minX / slamMap.width) * W;
+  var maxWx = (closestCluster.maxX / slamMap.width) * W;
+  var minWy = (closestCluster.minY / slamMap.height) * H;
+  var maxWy = (closestCluster.maxY / slamMap.height) * H;
+  var cX = (minWx + maxWx) / 2;
+  var cY = (minWy + maxWy) / 2;
 
-    robotState.panAngle = Math.max(-80, Math.min(80, panOffset));
+  // Calcola la distanza minima dal bordo dell'arredo
+  var dx = Math.max(minWx - robotState.x, 0, robotState.x - maxWx);
+  var dy = Math.max(minWy - robotState.y, 0, robotState.y - maxWy);
+  var edgeDist = Math.hypot(dx, dy);
+
+  // Rifiuta scatti da lontano: l'ispezione deve avvenire solo a raggio ravvicinato (<= 160px = 1 metro)
+  if (edgeDist > 160) {
+    return { success: false, reason: 'too_far' };
   }
 
+  // Puntamento ottico: orienta la fotocamera (pan servo) verso la faccia visibile dell'arredo senza teletrasporto del telaio
+  var targetLookX = (robotState.x < minWx) ? minWx : (robotState.x > maxWx ? maxWx : cX);
+  var targetLookY = (robotState.y < minWy) ? minWy : (robotState.y > maxWy ? maxWy : cY);
+  var angleToCentroid = Math.atan2(targetLookY - robotState.y, targetLookX - robotState.x);
+
+  var diffRad = angleToCentroid - robotState.angle;
+  while (diffRad > Math.PI) diffRad -= 2 * Math.PI;
+  while (diffRad < -Math.PI) diffRad += 2 * Math.PI;
+
+  robotState.panAngle = Math.max(-90, Math.min(90, diffRad * 180 / Math.PI));
+  robotState.tiltAngle = 5;
+
   var headAngleRad = robotState.angle + (robotState.panAngle * Math.PI / 180);
-  var targetCoord = findVisibleObstacleCoord(robotState.x, robotState.y, headAngleRad);
+  var targetCoord = { x: cX, y: cY };
 
   // Aggiorna la fotocamera 3D Three.js in modo SINCRONO prima di scattare la foto
   if (typeof updateThreeCamera === 'function') {
@@ -153,7 +250,7 @@ async function triggerStationaryVlmInspection(forcedCluster) {
   }
 
   var snapshot = typeof getThreeFPSnapshot === 'function' ? getThreeFPSnapshot() : null;
-  if (!snapshot || !snapshot.includes(',')) return;
+  if (!snapshot || !snapshot.includes(',')) return { success: false, reason: 'no_snapshot' };
 
   var freezePose = {
     x: robotState.x, y: robotState.y, angle: robotState.angle, panAngle: robotState.panAngle,
@@ -178,6 +275,10 @@ async function triggerStationaryVlmInspection(forcedCluster) {
       });
       console.log('📸 [VLM Inspection] Foto #' + slamMap.vlmSnapshots.length + ' @ ' + Math.round(freezePose.panAngle) + '° Pan | Raw Output: "' + (resData.raw || '') + '" | Status: ' + resData.status);
 
+      if (resData.status === 'ollama_offline') {
+        console.warn('⚠️ [VLM Bridge] Il demone Ollama non risponde sulla porta 11434. Assicurati che Ollama sia avviato.');
+      }
+
       var cntEl = document.getElementById('vlmPhotoCount');
       if (cntEl) cntEl.innerText = slamMap.vlmSnapshots.length;
 
@@ -185,7 +286,7 @@ async function triggerStationaryVlmInspection(forcedCluster) {
         var lm = resData.landmarks[0];
         if (!slamMap.semanticLandmarks) slamMap.semanticLandmarks = [];
         if (!slamMap.vlmCandidateLandmarks) slamMap.vlmCandidateLandmarks = [];
-        var nameToRegister = lm.display || lm.name;
+        var nameToRegister = (lm.icon ? lm.icon + ' ' : '') + (lm.display || lm.name);
 
         var anchorX = (cX !== null) ? cX : targetCoord.x;
         var anchorY = (cY !== null) ? cY : targetCoord.y;
@@ -194,18 +295,6 @@ async function triggerStationaryVlmInspection(forcedCluster) {
         if (anchorX <= 25 || anchorX >= W - 25 || anchorY <= 25 || anchorY >= H - 25) {
           console.log('[VLM Filter] Etichetta "' + nameToRegister + '" scartata: cade direttamente sulla parete perimetrale.');
           return;
-        }
-
-        var groundTruthWalls = (typeof arenaObjects !== 'undefined' && arenaObjects.walls) ? arenaObjects.walls : [];
-        var matchedWall = groundTruthWalls.find(function(w) {
-          var cx = w.x + w.w / 2, cy = w.y + w.h / 2;
-          return Math.hypot(cx - anchorX, cy - anchorY) < 180;
-        });
-
-        if (matchedWall) {
-          nameToRegister = matchedWall.icon + ' ' + matchedWall.name;
-          lm.icon = matchedWall.icon;
-          lm.type = matchedWall.category || 'furniture';
         }
 
         // Registrazione Immediata & Multi-View Consensus per la Piantina Semantica
@@ -225,6 +314,13 @@ async function triggerStationaryVlmInspection(forcedCluster) {
           slamMap.semanticLandmarks.push(landmarkEntry);
         }
 
+        if (closestCluster) closestCluster.vlmVerified = true;
+        var clKey = getClusterKey(anchorX, anchorY);
+        if (slamMap.clusterTracking) {
+          if (!slamMap.clusterTracking[clKey]) slamMap.clusterTracking[clKey] = {};
+          slamMap.clusterTracking[clKey].verified = true;
+        }
+
         var candidateIdx = slamMap.vlmCandidateLandmarks.findIndex(function(cand) {
           return Math.hypot(cand.x - anchorX, cand.y - anchorY) < 40;
         });
@@ -242,12 +338,26 @@ async function triggerStationaryVlmInspection(forcedCluster) {
             type: lm.type || 'GENERIC', confidence: 0.85, count: 1, ts: Date.now()
           });
         }
+        return { success: true, landmark: nameToRegister };
+      } else {
+        var anchorX = (cX !== null) ? cX : targetCoord.x;
+        var anchorY = (cY !== null) ? cY : targetCoord.y;
+        var attempts = getClusterAttemptCount(anchorX, anchorY);
+        console.log('⚠️ [VLM Inspection] Oggetto non categorizzato nel catalogo. Tentativi: ' + attempts + '/5');
+        if (attempts >= 5) {
+          registerUnknownObstacleLandmark(anchorX, anchorY, closestCluster);
+          return { success: true, unknown: true };
+        }
+        return { success: false, attempts: attempts };
       }
     }
+    return { success: false };
   } catch (e) {
     console.warn('[VLM Bridge] Errore richiesta ispezione:', e);
+    return { success: false, error: e };
   } finally {
     vlmInspecting = false;
+    robotState.tiltAngle = 0;
   }
 }
 
@@ -300,7 +410,14 @@ function openVlmGalleryModal() {
   } else {
     snaps.forEach(function(s, idx) {
       var lm = (s.res && s.res.landmarks && s.res.landmarks.length > 0) ? s.res.landmarks[0] : null;
-      var raw = (s.res && (s.res.raw || (lm ? lm.description : ''))) || 'Nessuna risposta';
+      var raw = (s.res && (s.res.raw || (lm ? lm.description : '')));
+      if (!raw) {
+        if (s.res && s.res.status === 'ollama_offline') {
+          raw = '⚠️ Servizio Ollama offline sulla porta 11434. Avvia Ollama con "ollama run moondream" o aprendo Ollama.app.';
+        } else {
+          raw = 'Nessuna risposta';
+        }
+      }
       var statusBadge = lm
         ? '<span style="color:#00f5d4; font-weight:bold;">' + lm.icon + ' ' + lm.display + '</span>'
         : '<span style="color:#ffbe0b;">⚠️ Non riconosciuto</span>';

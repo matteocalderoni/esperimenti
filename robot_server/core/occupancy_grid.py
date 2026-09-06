@@ -221,11 +221,12 @@ class OccupancyGrid:
             w_width = item['span_x'] * self.resolution
             w_height = item['span_y'] * self.resolution
 
-            obj_type = "table" if (w_width >= 40 and w_height >= 40) else "chair"
-            label = "🍽️ Tavolo" if obj_type == "table" else "🪑 Sedia"
+            obj_type = "obstacle"
+            obj_idx = len(self.semantic_objects) + 1
+            label = f"Ostacolo #{obj_idx}"
 
             self.semantic_objects.append({
-                'id': f"obj_{len(self.semantic_objects)+1}",
+                'id': f"obj_{obj_idx}",
                 'type': obj_type,
                 'label': label,
                 'gx': item['min_x'], 'gy': item['min_y'],

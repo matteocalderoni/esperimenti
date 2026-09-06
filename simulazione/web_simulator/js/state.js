@@ -90,7 +90,8 @@ function updateModeBadge() {
     'police': 'POLICE STROBE LIGHTS',
     'trackLight': 'LIGHT TRACKING',
     'keepDistance': 'KEEP DISTANCE (RADAR)',
-    'exploration': '🗺️ SLAM EXPLORATION'
+    'exploration': '🗺️ 1. SLAM MAPPATURA & QUOTE',
+    'inspectionTour': '🔍 2. TOUR RICONOSCIMENTO ARREDI (VLM)'
   };
   const modeLabel = modeNames[robotState.activeMode] || robotState.activeMode.toUpperCase();
   const engineLabel = robotState.engineMode === 'JS' ? '🧪 ENGINE: JS EXPERIMENTAL' : '🐍 ENGINE: PYTHON SERVER';

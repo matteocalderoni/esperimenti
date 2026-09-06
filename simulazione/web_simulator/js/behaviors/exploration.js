@@ -11,117 +11,121 @@ function isClearForRotation() {
   return false;
 }
 
-function runExplorationBehavior() {
+function runExplorationBehavior(dt) {
+  if (dt === undefined) dt = (typeof SIM_DT !== 'undefined') ? SIM_DT : 0.016;
   if (!slamMap.grid) initSlamGrid();
-  if (slamMap.stats.exploredPct >= 99) slamMap.fsmState = 'COMPLETE';
 
-  // Proactive Cluster Retry Engine: Insiste con la scansione VLM per tutti gli ostacoli NON ancora identificati
-  if (slamMap.fsmState !== 'NAVIGATE' && typeof THREE !== 'undefined' && typeof vlmInspecting !== 'undefined' && !vlmInspecting && typeof findSlamClusters === 'function' && typeof triggerStationaryVlmInspection === 'function') {
-    var clusters = findSlamClusters(true);
-    var W = typeof getArenaW === 'function' ? getArenaW() : 700;
-    var H = typeof getArenaH === 'function' ? getArenaH() : 520;
-    var nowTime = Date.now();
-
-    var unverifiedCluster = clusters.find(function(c) {
-      var cX = ((c.minX + c.maxX) / 2 / slamMap.width) * W;
-      var cY = ((c.minY + c.maxY) / 2 / slamMap.height) * H;
-      if (cX <= 20 || cX >= W - 20 || cY <= 20 || cY >= H - 20) return false;
-
-      if (typeof isClusterAbandoned === 'function' && isClusterAbandoned(cX, cY)) return false;
-      if (typeof isClusterVlmVerified === 'function' && isClusterVlmVerified(cX, cY)) return false;
-
-      var attempts = (typeof getClusterAttemptCount === 'function') ? getClusterAttemptCount(cX, cY) : 0;
-      if (attempts >= 3) return false;
-
-      var key = (typeof getClusterKey === 'function') ? getClusterKey(cX, cY) : '';
-      var lastAttempt = (slamMap.clusterTracking && slamMap.clusterTracking[key]) ? slamMap.clusterTracking[key].lastTime : 0;
-
-      // Cooldown di 2.5s tra tentativi successivi e rinuncia dopo 3 tentativi
-      return (nowTime - lastAttempt > 2500);
-    });
-
-    if (unverifiedCluster) {
-      var uCX = ((unverifiedCluster.minX + unverifiedCluster.maxX) / 2 / slamMap.width) * W;
-      var uCY = ((unverifiedCluster.minY + unverifiedCluster.maxY) / 2 / slamMap.height) * H;
-      if (typeof recordClusterAttempt === 'function') recordClusterAttempt(uCX, uCY);
-      triggerStationaryVlmInspection(unverifiedCluster);
-    }
-  }
-
-  // 1. HEAD_SCAN: Scansione Panoramica Pan-Tilt da Fermo + Scatto VLM
-  if (slamMap.fsmState === 'HEAD_SCAN' || slamMap.fsmState === 'HEAD_SCAN_1' || slamMap.fsmState === 'INITIAL_SCAN') {
-    robotState.speed = 0; robotState.steering = 0;
-    if (slamMap.scanStep === 0) robotState.panAngle = -80;
-    robotState.panAngle += 5; slamMap.scanStep++;
-    if (typeof scanHeadFan === 'function') scanHeadFan(robotState.panAngle); else scanAllRays();
-
-    if ((robotState.panAngle === -60 || robotState.panAngle === 0 || robotState.panAngle === 60) && typeof triggerStationaryVlmInspection === 'function') {
-      triggerStationaryVlmInspection();
-    }
-
-    if (robotState.panAngle >= 80 || slamMap.scanStep >= 34) {
-      robotState.panAngle = 0; slamMap.scanStep = 0;
-      lastVlmScanPos = { x: robotState.x, y: robotState.y };
-      slamMap.fsmState = 'FIND_FRONTIERS';
-    }
-    return;
-  }
-
-  // 2. ROTATE_180: Passaggio diretto senza scatti (i sensori coprono già 360°)
-  if (slamMap.fsmState === 'ROTATE_180') {
-    robotState.steering = 0;
+  // 1. INITIAL_SCAN / RECOVERY: Scansione a 360° istantanea per mappare subito l'ambiente iniziale
+  if (slamMap.fsmState === 'HEAD_SCAN' || slamMap.fsmState === 'HEAD_SCAN_1' || slamMap.fsmState === 'INITIAL_SCAN' ||
+      slamMap.fsmState === 'ROTATE_180' || slamMap.fsmState === 'HEAD_SCAN_2') {
+    robotState.panAngle = 0;
+    if (typeof scan360Rays === 'function') scan360Rays(); else scanAllRays();
     slamMap.fsmState = 'FIND_FRONTIERS';
     return;
   }
 
-  // 3. HEAD_SCAN_2: Passaggio diretto
-  if (slamMap.fsmState === 'HEAD_SCAN_2') {
-    robotState.panAngle = 0; slamMap.scanStep = 0;
-    slamMap.fsmState = 'FIND_FRONTIERS';
-    return;
-  }
-
-  // 4. NAVIGATE: Movimento verso la frontiera + Scansioni intermedie distribuite
+  // 2. NAVIGATE: Movimento continuo e fluido verso la frontiera aperta con regolazione dinamica
   if (slamMap.fsmState === 'NAVIGATE') {
     scanAllRays();
-    if (typeof navigateSlamPath === 'function') navigateSlamPath();
-
-    // Se ha percorso piu' di 450px (~4.5m) dall'ultimo scatto, attiva una scansione intermedia distribuita
-    var distFromLast = Math.hypot(robotState.x - lastVlmScanPos.x, robotState.y - lastVlmScanPos.y);
-    if (distFromLast > 450) {
-      robotState.speed = 0; robotState.steering = 0;
-      slamMap.scanStep = 0;
-      slamMap.fsmState = 'HEAD_SCAN';
-    }
+    if (typeof navigateSlamPath === 'function') navigateSlamPath(dt);
   }
 
-  // 5. FIND_FRONTIERS: scelta dell'obiettivo (logica in slam/slam_target.js)
+  // 3. FIND_FRONTIERS: Selezione fluida della nuova frontiera (mantiene l'inerzia)
   else if (slamMap.fsmState === 'FIND_FRONTIERS') {
-    robotState.speed = 0; robotState.steering = 0; robotState.panAngle = 0;
+    robotState.panAngle = 0;
     var cur = slamWorldToGrid(robotState.x, robotState.y);
     slamMap.frontiers = findSlamFrontiers();
 
-    if (slamNoProgress()) { slamMap.fsmState = 'COMPLETE'; return; }
+    // Se non ci sono frontiere aperte trovate:
+    if (!slamMap.frontiers || slamMap.frontiers.length === 0) {
+      // Conclusione valida SOLO se abbiamo già coperto la quasi totalità della stanza (>= 75%)
+      if (slamMap.stats.exploredPct >= 75) {
+        console.log('🏁 [SLAM Phase 1] Nessuna frontiera aperta residua: rilievo stanza completato!');
+        slamMap.fsmState = 'COMPLETE';
+        return;
+      }
+      // Altrimenti, se siamo a inizio o metà esplorazione (< 75%), NON è conclusa:
+      // esegui scansione a 360° per aprire nuove frontiere o usa un hunter target
+      if (typeof scan360Rays === 'function') scan360Rays(); else scanAllRays();
+      slamMap.frontiers = findSlamFrontiers();
+      if (!slamMap.frontiers || slamMap.frontiers.length === 0) {
+        var hunter = (typeof findHunterTarget === 'function') ? findHunterTarget(cur, getDilatedSlamGrid()) : null;
+        if (hunter) {
+          var hPath = planAdaptiveSlamAStar(cur, hunter);
+          if (hPath && hPath.length > 1) {
+            slamMap.currentPath = hPath;
+            slamMap.pathIndex = 0;
+            slamMap.stepCounter = 0;
+            slamMap.stuckCounter = 0;
+            slamMap.fsmState = 'NAVIGATE';
+            return;
+          }
+        }
+        return; // Riprova al frame successivo
+      }
+    }
+
+    if (slamNoProgress()) {
+      console.log('🏁 [SLAM Phase 1] Mappatura completata per assenza di nuovo progresso.');
+      slamMap.fsmState = 'COMPLETE';
+      return;
+    }
 
     var path = planSlamExplorationPath(cur);
-    if (path.length > 1) {
-      slamMap.currentPath = path; slamMap.pathIndex = 0;
-      slamMap.stepCounter = 0; slamMap.stuckCounter = 0;
+    if (path && path.length > 1) {
+      slamMap.currentPath = path;
+      slamMap.pathIndex = 0;
+      slamMap.stepCounter = 0;
+      slamMap.stuckCounter = 0;
       slamMap.fsmState = 'NAVIGATE';
     } else {
       slamMap.stuckCounter++;
-      if (slamMap.stuckCounter >= 2 || slamMap.stats.exploredPct >= 78) {
-        slamMap.stuckCounter = 0; slamMap.fsmState = 'COMPLETE';
+      if (typeof recentTargetsQueue !== 'undefined') recentTargetsQueue = [];
+      if (slamMap.stats.exploredPct >= 85 && slamMap.stuckCounter >= 30) {
+        slamMap.stuckCounter = 0;
+        slamMap.fsmState = 'COMPLETE';
       } else {
-        slamMap.scanStep = 0; slamMap.fsmState = 'HEAD_SCAN';
+        if (typeof scan360Rays === 'function') scan360Rays(); else scanAllRays();
       }
     }
   }
 
-  // 6. COMPLETE: Target 99% raggiunto
+  // 4. COMPLETE: Mappatura 2D & Quote CAD completate
   else if (slamMap.fsmState === 'COMPLETE') {
+    // Salvaguardia categorica contro falsi completamenti a inizio sessione
+    if (slamMap.stats.exploredPct < 70) {
+      console.warn('⚠️ [SLAM] Rifiutato stato COMPLETE anomalo a ' + slamMap.stats.exploredPct + '%. Riavvio frontiere.');
+      if (typeof scan360Rays === 'function') scan360Rays(); else scanAllRays();
+      slamMap.fsmState = 'FIND_FRONTIERS';
+      return;
+    }
+
     robotState.speed = 0; robotState.steering = 0; robotState.panAngle = 0;
-    if (typeof showCompletionModal === 'function') showCompletionModal(slamMap.stats.exploredPct);
+
+    // Consolidamento automatico della mappa SLAM, chiusura pareti retrostanti e classificazione arredi
+    if (!slamMap.solidified) {
+      slamMap.solidified = true;
+      if (typeof solidifyClusterInteriors === 'function') {
+        solidifyClusterInteriors(slamMap);
+      }
+    }
+
+    // Attiva il pulsante per la Fase 2 (Tour Riconoscimento Arredi VLM)
+    var btn = document.getElementById('btnInspectionTour');
+    if (btn) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.cursor = 'pointer';
+      btn.style.background = 'rgba(255, 190, 11, 0.25)';
+      btn.style.borderColor = 'var(--accent-amber)';
+      btn.style.color = '#fff';
+      btn.style.boxShadow = '0 0 16px rgba(255, 190, 11, 0.6)';
+      btn.innerHTML = '2. 🔍 Riconosci Arredi (VLM) ➔';
+    }
+
+    if (typeof showCompletionModal === 'function') {
+      showCompletionModal(slamMap.stats.exploredPct, 'mapping');
+    }
   }
 }
 

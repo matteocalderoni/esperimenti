@@ -3,7 +3,7 @@
 
 var slamMap = {
   width: 70,
-  height: 69,
+  height: 52,
   grid: null,
   frontiers: [],
   currentPath: [],
@@ -51,8 +51,24 @@ function initSlamGrid() {
   slamMap.semanticLandmarks = [];
   slamMap.vlmSnapshots = [];
   slamMap.stats = { exploredPct: 0, freeCells: 0, wallCells: 0 };
+  slamMap.solidified = false;
   if (typeof modalDismissed !== 'undefined') modalDismissed = false;
   if (typeof modalShown !== 'undefined') modalShown = false;
+
+  // Il footprint immediato attorno al robot è certamente spazio libero reale
+  if (typeof robotState !== 'undefined' && robotState.x !== undefined) {
+    var initPos = slamWorldToGrid(robotState.x, robotState.y);
+    for (var dy = -2; dy <= 2; dy++) {
+      for (var dx = -2; dx <= 2; dx++) {
+        var ny = initPos.gy + dy, nx = initPos.gx + dx;
+        if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width) {
+          slamMap.logOddsGrid[ny][nx] = -3.0;
+          slamMap.grid[ny][nx] = 0;
+        }
+      }
+    }
+    updateSlamStats();
+  }
 }
 initSlamGrid();
 
@@ -94,7 +110,8 @@ function updateSlamRayFromHit(startX, startY, hitX, hitY, didHit, weight) {
     if (e2 < dx) { err += dx; y0 += sy; }
   }
 
-  var lFree = -0.20 * weight;
+  // Un singolo raggio nel vuoto libera subito la cella (-0.45 < -0.40)
+  var lFree = -0.45 * weight;
   var lOcc = +1.40 * weight;
 
   var clearLimit = didHit ? Math.max(0, points.length - 1) : points.length;
@@ -157,6 +174,16 @@ function scanAllRays() {
     var angle = robotState.angle + (SCAN_FAN_DEG[i] * Math.PI / 180);
     var ray = castSingleRay(robotState.x, robotState.y, angle);
     updateSlamRayFromHit(robotState.x, robotState.y, ray.hitX, ray.hitY, ray.hit, weight);
+  }
+  updateSlamStats();
+}
+
+function scan360Rays() {
+  if (typeof castSingleRay !== 'function') return;
+  for (var deg = 0; deg < 360; deg += 10) {
+    var angle = robotState.angle + (deg * Math.PI / 180);
+    var ray = castSingleRay(robotState.x, robotState.y, angle);
+    updateSlamRayFromHit(robotState.x, robotState.y, ray.hitX, ray.hitY, ray.hit, 1.0);
   }
   updateSlamStats();
 }

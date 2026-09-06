@@ -8,8 +8,8 @@
 // Qui il margine parte sempre da CAR_RADIUS_PX e viene convertito in celle
 // separatamente per asse.
 
-// Margine di sicurezza elevato oltre il raggio del telaio (70%): blocca i varchi stretti < 75cm ed impone l'aggiramento ad ampio raggio.
-var SLAM_SAFETY_MARGIN = 1.70;
+// Margine di sicurezza elevato oltre il raggio del telaio (+110%): impone traiettorie larghe lontane da spigoli e pareti.
+var SLAM_SAFETY_MARGIN = 2.10;
 
 /**
  * Raggio di dilatazione in celle, per asse, che copre l'ingombro reale.
@@ -20,8 +20,8 @@ function getSafeDilationCells() {
   var cellH = getArenaH() / slamMap.height;
   var raggioPx = CAR_RADIUS_PX * SLAM_SAFETY_MARGIN;
   return {
-    rx: Math.max(1, Math.ceil(raggioPx / cellW)),
-    ry: Math.max(1, Math.ceil(raggioPx / cellH))
+    rx: Math.max(2, Math.ceil(raggioPx / cellW)),
+    ry: Math.max(2, Math.ceil(raggioPx / cellH))
   };
 }
 
@@ -40,18 +40,53 @@ function getDilatedSlamGrid(rx, ry) {
   if (ry === undefined) ry = rx;
 
   var dGrid = slamMap.grid.map(function (row) { return row.slice(); });
-  for (var y = 0; y < slamMap.height; y++) {
-    for (var x = 0; x < slamMap.width; x++) {
+  var W = slamMap.width, H = slamMap.height;
+
+  // 1. Dilatazione delle celle occupate note (grid === 1)
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
       if (slamMap.grid[y][x] === 1) {
         for (var dy = -ry; dy <= ry; dy++) {
           for (var dx = -rx; dx <= rx; dx++) {
             var ny = y + dy, nx = x + dx;
-            if (ny >= 0 && ny < slamMap.height && nx >= 0 && nx < slamMap.width) dGrid[ny][nx] = 1;
+            if (ny >= 0 && ny < H && nx >= 0 && nx < W) dGrid[ny][nx] = 1;
           }
         }
       }
     }
   }
+
+  // 2. Dilatazione dei bordi perimetrali della stanza (pareti esterne e angoli):
+  // Impedisce a monte che i percorsi A* o le frontiere rasentino i muri esterni
+  for (var py = 0; py < H; py++) {
+    for (var px = 0; px < W; px++) {
+      if (px < rx || px >= W - rx || py < ry || py >= H - ry) {
+        dGrid[py][px] = 1;
+      }
+    }
+  }
+
+  // 3. Dilatazione dei cluster d'arredo/ostacoli rilevati (inclusi gli interni e i dorsi a parete in ombra)
+  if (typeof findSlamClusters === 'function') {
+    var clusters = findSlamClusters(true);
+    for (var ci = 0; ci < clusters.length; ci++) {
+      var c = clusters[ci];
+      var spanX = c.maxX - c.minX + 1, spanY = c.maxY - c.minY + 1;
+      if (spanX >= Math.floor(W * 0.6) && spanY >= Math.floor(H * 0.6)) continue;
+      if (c.celle >= 4 && spanX >= 2 && spanY >= 2) {
+        var minX = Math.max(0, (c.isWallAttached && c.effMinX !== undefined ? c.effMinX : c.minX) - rx);
+        var maxX = Math.min(W - 1, (c.isWallAttached && c.effMaxX !== undefined ? c.effMaxX : c.maxX) + rx);
+        var minY = Math.max(0, (c.isWallAttached && c.effMinY !== undefined ? c.effMinY : c.minY) - ry);
+        var maxY = Math.min(H - 1, (c.isWallAttached && c.effMaxY !== undefined ? c.effMaxY : c.maxY) + ry);
+        for (var gy = minY; gy <= maxY; gy++) {
+          for (var gx = minX; gx <= maxX; gx++) {
+            dGrid[gy][gx] = 1;
+          }
+        }
+      }
+    }
+  }
+
   return dGrid;
 }
 

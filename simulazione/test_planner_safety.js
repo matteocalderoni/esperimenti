@@ -5,7 +5,7 @@
 const assert = require('assert');
 const { loadSim, fakeCanvas, clearanceFromWalls, fillCells, markRestFree } = require('./sim_test_harness');
 
-const CANVAS_W = 446, CANVAS_H = 438;
+const CANVAS_W = 2100, CANVAS_H = 1560;
 const CAR_RADIUS_PX = 22;
 
 function setup() {
@@ -22,11 +22,11 @@ function test_varco_troppo_stretto_non_e_percorribile() {
   sim.initSlamGrid();
   markRestFree(sim.slamMap);
 
-  // Muro verticale completo sulla colonna 35, con un varco di 3 celle (~25 px).
+  // Muro verticale completo sulla colonna 35, con un varco di 1 cella (~22.6 px < diametro 44 px).
   const cellH = CANVAS_H / sim.slamMap.height;
-  fillCells(sim.slamMap, 35, 0, 35, 24);
-  fillCells(sim.slamMap, 35, 28, 35, 51);
-  const varcoPx = 3 * cellH;
+  fillCells(sim.slamMap, 35, 0, 35, 25);
+  fillCells(sim.slamMap, 35, 27, 35, sim.slamMap.height - 1);
+  const varcoPx = 1 * cellH;
   assert.ok(varcoPx < 2 * CAR_RADIUS_PX,
     `Il varco di prova (${varcoPx.toFixed(1)} px) deve essere piu' stretto del diametro del robot (${2 * CAR_RADIUS_PX} px)`);
 
@@ -53,7 +53,7 @@ function test_waypoint_rispettano_ingombro_robot() {
   }
 
   // Partenza e arrivo in spazio realmente libero (verificato sotto).
-  const startPx = { x: 150, y: 150 }, goalPx = { x: 380, y: 380 };
+  const startPx = { x: 150, y: 150 }, goalPx = { x: 450, y: 300 };
   for (const p of [startPx, goalPx]) {
     assert.ok(clearanceFromWalls(p.x, p.y, walls) >= CAR_RADIUS_PX,
       `Il punto di prova (${p.x},${p.y}) deve stare in spazio libero`);
@@ -84,7 +84,7 @@ function test_corridoio_ampio_resta_percorribile() {
 
   const cellH = CANVAS_H / sim.slamMap.height;
   fillCells(sim.slamMap, 35, 0, 35, 14);
-  fillCells(sim.slamMap, 35, 38, 35, 51);
+  fillCells(sim.slamMap, 35, 38, 35, sim.slamMap.height - 1);
   const varcoPx = 23 * cellH;
   assert.ok(varcoPx > 4 * CAR_RADIUS_PX, 'Il corridoio di prova deve essere ampiamente percorribile');
 

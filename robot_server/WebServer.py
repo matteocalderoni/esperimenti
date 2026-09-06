@@ -194,7 +194,6 @@ def functionSelect(command_input, response):
             screen.screen_show(5,'KeepDistance')
 
     elif 'exploration' == command_input:
-        fuc.exploration()
         if OLED_connection:
             screen.screen_show(5,'Exploration')
 
@@ -204,6 +203,16 @@ def functionSelect(command_input, response):
         fuc.pause()
         move.motorStop()
         time.sleep(0.5)
+        move.motorStop()
+
+    elif 'inspectionTour' == command_input:
+        if OLED_connection:
+            screen.screen_show(5,'Inspect Tour')
+
+    elif 'inspectionTourOff' == command_input:
+        if OLED_connection:
+            screen.screen_show(5,'FUNCTION OFF')
+        fuc.pause()
         move.motorStop()
 
     elif 'keepDistanceOff' == command_input:
@@ -395,6 +404,8 @@ def print_command_banner(cmd_input):
         'policeOff': '⏹ EFFETTO VISIVO: DISATTIVA LUCI POLIZIA',
         'exploration': '🗺️ MODALITÀ: ESPLORAZIONE & MAPPATURA 2D',
         'explorationOff': '⏹ MODALITÀ: DISATTIVA ESPLORAZIONE',
+        'inspectionTour': '🔍 MODALITÀ: TOUR RICONOSCIMENTO ARREDI (VLM)',
+        'inspectionTourOff': '⏹ MODALITÀ: DISATTIVA TOUR ARREDI',
         'stopCV': '🛑 ARRESTO GENERALE: DISATTIVA TUTTE LE FUNZIONI',
         'scan': '🔍 SCANNER ULTRASUONI: RADAR SCAN 180°'
     }

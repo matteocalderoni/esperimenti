@@ -6,7 +6,7 @@
 const assert = require('assert');
 const { loadSim, fakeCanvas } = require('./sim_test_harness');
 
-const CANVAS_W = 446, CANVAS_H = 438;
+const CANVAS_W = 2100, CANVAS_H = 1560;
 const PX_PER_METRO = 160;
 
 function setup() {

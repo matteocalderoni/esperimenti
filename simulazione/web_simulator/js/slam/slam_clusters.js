@@ -73,27 +73,115 @@ function findSlamClusters(includePerimeter) {
       var depthRight = (maxX >= pMaxX - 2) ? (pMaxX - minX + 1) : 0;
       var maxWallDepth = Math.max(depthTop, depthBottom, depthLeft, depthRight);
 
-      var isWallProtrusion = touchesOuterShell && !isOuterPerimeter && (maxWallDepth >= 2);
+      var effMinX = minX, effMaxX = maxX, effMinY = minY, effMaxY = maxY;
 
-      if (!touchesOuterShell || (includePerimeter && !isOuterPerimeter) || isWallProtrusion) {
-        var effMinX = minX, effMaxX = maxX, effMinY = minY, effMaxY = maxY;
+      // Rilevamento avanzato arredo a parete:
+      // Un arredo è addossato alla parete se la sua faccia posteriore è orientata verso il perimetro
+      // ad una distanza compatibile con la profondità standard (fino a 11 celle = ~2m)
+      // e non presenta corridoi di spazio libero confermato (grid === 0) alle sue spalle.
+      var isBackedToWall = false;
+      var MAX_WALL_ATTACH_CELLS = 11;
+
+      var distW = minX - pMinX;
+      var distE = pMaxX - maxX;
+      var distN = minY - pMinY;
+      var distS = pMaxY - maxY;
+      var minDist = Math.min(distW, distE, distN, distS);
+
+      if (minDist <= MAX_WALL_ATTACH_CELLS) {
+        // Parete OVEST: prioritaria solo se è la parete più vicina
+        if (distW <= minDist + 2 && distW <= MAX_WALL_ATTACH_CELLS && distW > 0) {
+          var freeCountW = 0, totalCountW = 0;
+          for (var cy = minY; cy <= maxY; cy++) {
+            for (var cx = pMinX; cx < minX; cx++) {
+              totalCountW++;
+              if (slamMap.grid[cy] && slamMap.grid[cy][cx] === 0) freeCountW++;
+            }
+          }
+          if (totalCountW > 0 && (freeCountW / totalCountW < 0.15 || distW <= 2)) {
+            effMinX = Math.max(1, pMinX);
+            touchesOuterShell = true;
+            isBackedToWall = true;
+          }
+        }
+
+        // Parete EST
+        if (distE <= minDist + 2 && distE <= MAX_WALL_ATTACH_CELLS && distE > 0) {
+          var freeCountE = 0, totalCountE = 0;
+          for (var cy = minY; cy <= maxY; cy++) {
+            for (var cx = maxX + 1; cx <= pMaxX; cx++) {
+              totalCountE++;
+              if (slamMap.grid[cy] && slamMap.grid[cy][cx] === 0) freeCountE++;
+            }
+          }
+          if (totalCountE > 0 && (freeCountE / totalCountE < 0.15 || distE <= 2)) {
+            effMaxX = Math.min(W - 2, pMaxX);
+            touchesOuterShell = true;
+            isBackedToWall = true;
+          }
+        }
+
+        // Parete NORD
+        if (distN <= minDist + 2 && distN <= MAX_WALL_ATTACH_CELLS && distN > 0) {
+          var freeCountN = 0, totalCountN = 0;
+          for (var cx = minX; cx <= maxX; cx++) {
+            for (var cy = pMinY; cy < minY; cy++) {
+              totalCountN++;
+              if (slamMap.grid[cy] && slamMap.grid[cy][cx] === 0) freeCountN++;
+            }
+          }
+          if (totalCountN > 0 && (freeCountN / totalCountN < 0.15 || distN <= 2)) {
+            effMinY = Math.max(1, pMinY);
+            touchesOuterShell = true;
+            isBackedToWall = true;
+          }
+        }
+
+        // Parete SUD
+        if (distS <= minDist + 2 && distS <= MAX_WALL_ATTACH_CELLS && distS > 0) {
+          var freeCountS = 0, totalCountS = 0;
+          for (var cx = minX; cx <= maxX; cx++) {
+            for (var cy = maxY + 1; cy <= pMaxY; cy++) {
+              totalCountS++;
+              if (slamMap.grid[cy] && slamMap.grid[cy][cx] === 0) freeCountS++;
+            }
+          }
+          if (totalCountS > 0 && (freeCountS / totalCountS < 0.15 || distS <= 2)) {
+            effMaxY = Math.min(H - 2, pMaxY);
+            touchesOuterShell = true;
+            isBackedToWall = true;
+          }
+        }
+      }
+
+      var isWallProtrusion = touchesOuterShell && !isOuterPerimeter && (maxWallDepth >= 2 || isBackedToWall);
+
+      if (!touchesOuterShell || (includePerimeter && !isOuterPerimeter) || isWallProtrusion || isBackedToWall) {
         if (touchesOuterShell) {
-          if (effMinX <= pMinX + 10) effMinX = Math.max(1, pMinX);
-          if (effMaxX >= pMaxX - 10) effMaxX = Math.min(W - 2, pMaxX);
-          if (effMinY <= pMinY + 10) effMinY = Math.max(1, pMinY);
-          if (effMaxY >= pMaxY - 10) effMaxY = Math.min(H - 2, pMaxY);
+          if (effMinX <= pMinX + 2) effMinX = Math.max(1, pMinX);
+          if (effMaxX >= pMaxX - 2) effMaxX = Math.min(W - 2, pMaxX);
+          if (effMinY <= pMinY + 2) effMinY = Math.max(1, pMinY);
+          if (effMaxY >= pMaxY - 2) effMaxY = Math.min(H - 2, pMaxY);
         }
         var effSpanX = effMaxX - effMinX + 1, effSpanY = effMaxY - effMinY + 1;
+        var wallSides = [];
+        if (effMinX <= pMinX + 2) wallSides.push('west');
+        if (effMaxX >= pMaxX - 2) wallSides.push('east');
+        if (effMinY <= pMinY + 2) wallSides.push('north');
+        if (effMaxY >= pMaxY - 2) wallSides.push('south');
+
         blocchi.push({
           minX: effMinX, maxX: effMaxX, minY: effMinY, maxY: effMaxY, celle: celle,
+          effMinX: effMinX, effMaxX: effMaxX, effMinY: effMinY, effMaxY: effMaxY,
           larghezzaM: slamSpanMeters(effSpanX, 'x'),
           profonditaM: slamSpanMeters(effSpanY, 'y'),
-          isWallAttached: touchesOuterShell
+          isWallAttached: (touchesOuterShell || isBackedToWall),
+          wallSides: wallSides
         });
       }
     }
   }
-  return mergeNearbyClusters(blocchi, 4);
+  return mergeNearbyClusters(blocchi, 3);
 }
 
 function mergeNearbyClusters(clusters, maxGapCells) {
@@ -128,16 +216,22 @@ function mergeNearbyClusters(clusters, maxGapCells) {
           var newSpanY = newMaxY - newMinY + 1;
           var newCelle = c1.celle + c2.celle;
           var isWallAttached = c1.isWallAttached || c2.isWallAttached;
+          var wallSides = (c1.wallSides || []).concat(c2.wallSides || []).filter(function(v, idx, arr) { return arr.indexOf(v) === idx; });
 
           list[i] = {
             minX: newMinX,
             maxX: newMaxX,
             minY: newMinY,
             maxY: newMaxY,
+            effMinX: newMinX,
+            effMaxX: newMaxX,
+            effMinY: newMinY,
+            effMaxY: newMaxY,
             celle: newCelle,
             larghezzaM: slamSpanMeters(newSpanX, 'x'),
             profonditaM: slamSpanMeters(newSpanY, 'y'),
-            isWallAttached: isWallAttached
+            isWallAttached: isWallAttached,
+            wallSides: wallSides
           };
 
           list.splice(j, 1);
@@ -158,18 +252,34 @@ function stitchPerimeterWallGaps(mapObj) {
   var H = mapObj.height, W = mapObj.width;
   var grid = mapObj.grid;
 
-  var perimeterY = [0, 1, 2, 3, 4, H - 5, H - 4, H - 3, H - 2, H - 1];
-  var perimeterX = [0, 1, 2, 3, 4, W - 5, W - 4, W - 3, W - 2, W - 1];
+  // 1. Calcola l'involucro perimetrale massimo noto della stanza
+  var pMinX = 999, pMaxX = -1, pMinY = 999, pMaxY = -1;
+  for (var y = 0; y < H; y++) {
+    for (var x = 0; x < W; x++) {
+      if (grid[y][x] === 1) {
+        if (x < pMinX) pMinX = x; if (x > pMaxX) pMaxX = x;
+        if (y < pMinY) pMinY = y; if (y > pMaxY) pMaxY = y;
+      }
+    }
+  }
+  if (pMaxX < 0) return;
 
-  // Cucitura orizzontale lungo i margini superiore e inferiore (fino a 12 celle di gap ~ 1.20m)
+  var perimeterY = [0, H - 1];
+  if (pMinY <= 1 && perimeterY.indexOf(pMinY) === -1) perimeterY.push(pMinY);
+  if (pMaxY >= H - 2 && perimeterY.indexOf(pMaxY) === -1) perimeterY.push(pMaxY);
+
+  var perimeterX = [0, W - 1];
+  if (pMinX <= 1 && perimeterX.indexOf(pMinX) === -1) perimeterX.push(pMinX);
+  if (pMaxX >= W - 2 && perimeterX.indexOf(pMaxX) === -1) perimeterX.push(pMaxX);
+
+  // 2. Cucitura orizzontale lungo i margini superiore e inferiore perimetrali
   perimeterY.forEach(function(y) {
-    if (y < 0 || y >= H) return;
     var gapStart = -1;
     for (var x = 0; x < W; x++) {
       if (grid[y][x] === 1) {
         if (gapStart !== -1) {
           var gapLen = x - gapStart - 1;
-          if (gapLen >= 1 && gapLen <= 12) {
+          if (gapLen >= 1 && gapLen <= 32) {
             for (var gx = gapStart + 1; gx < x; gx++) {
               var logVal = (mapObj.logOddsGrid && mapObj.logOddsGrid[y]) ? mapObj.logOddsGrid[y][gx] : 0;
               if (grid[y][gx] === -1 || (grid[y][gx] === 0 && logVal >= -1.0)) {
@@ -184,15 +294,14 @@ function stitchPerimeterWallGaps(mapObj) {
     }
   });
 
-  // Cucitura verticale lungo i margini sinistro e destro (fino a 12 celle di gap ~ 1.20m)
+  // 3. Cucitura verticale lungo i margini sinistro e destro perimetrali
   perimeterX.forEach(function(x) {
-    if (x < 0 || x >= W) return;
     var gapStart = -1;
     for (var y = 0; y < H; y++) {
       if (grid[y][x] === 1) {
         if (gapStart !== -1) {
           var gapLen = y - gapStart - 1;
-          if (gapLen >= 1 && gapLen <= 12) {
+          if (gapLen >= 1 && gapLen <= 32) {
             for (var gy = gapStart + 1; gy < y; gy++) {
               var logVal = (mapObj.logOddsGrid && mapObj.logOddsGrid[gy]) ? mapObj.logOddsGrid[gy][x] : 0;
               if (grid[gy][x] === -1 || (grid[gy][x] === 0 && logVal >= -1.0)) {
@@ -206,6 +315,30 @@ function stitchPerimeterWallGaps(mapObj) {
       }
     }
   });
+
+  // 4. Sigillatura continua dell'involucro esterno perimetrale (parete continua chiusa a 4 lati)
+  // Parete Nord (y = 0) e Sud (y = H - 1)
+  for (var cx = 0; cx < W; cx++) {
+    if (grid[0]) {
+      grid[0][cx] = 1;
+      if (mapObj.logOddsGrid && mapObj.logOddsGrid[0]) mapObj.logOddsGrid[0][cx] = 3.0;
+    }
+    if (grid[H - 1]) {
+      grid[H - 1][cx] = 1;
+      if (mapObj.logOddsGrid && mapObj.logOddsGrid[H - 1]) mapObj.logOddsGrid[H - 1][cx] = 3.0;
+    }
+  }
+  // Parete Ovest (x = 0) e Est (x = W - 1)
+  for (var cy = 0; cy < H; cy++) {
+    if (grid[cy]) {
+      grid[cy][0] = 1;
+      grid[cy][W - 1] = 1;
+      if (mapObj.logOddsGrid && mapObj.logOddsGrid[cy]) {
+        mapObj.logOddsGrid[cy][0] = 3.0;
+        mapObj.logOddsGrid[cy][W - 1] = 3.0;
+      }
+    }
+  }
 }
 
 function solidifyClusterInteriors(mapObj) {
@@ -217,26 +350,67 @@ function solidifyClusterInteriors(mapObj) {
   var maxSpanX = Math.floor(mapObj.width * 0.6);
   var maxSpanY = Math.floor(mapObj.height * 0.6);
 
-  // Riempimento omogeneo solido delle celle interne degli arredi (-1 o 0) per eliminare varchi/quadrati vuoti
+  // Riempimento omogeneo solido delle celle interne degli arredi (-1 o 0) e saldatura muri retrostanti
   clusters.forEach(function(c) {
     var spanX = c.maxX - c.minX + 1;
     var spanY = c.maxY - c.minY + 1;
     // Ignora l'involucro perimetrale esterno della stanza
     if (spanX >= maxSpanX && spanY >= maxSpanY) return;
 
-    if (c.celle >= 4 && spanX >= 2 && spanY >= 2) {
-      // Per gli arredi accostati a parete, salda il bounding box fino al filo del muro reale perimetrale
-      var effMinX = c.minX, effMaxX = c.maxX, effMinY = c.minY, effMaxY = c.maxY;
-      if (c.isWallAttached) {
-        if (effMinX <= 6) effMinX = 1;
-        if (effMaxX >= mapObj.width - 7) effMaxX = mapObj.width - 2;
-        if (effMinY <= 6) effMinY = 1;
-        if (effMaxY >= mapObj.height - 7) effMaxY = mapObj.height - 2;
+    if (c.celle >= 4 && (spanX >= 2 || c.isWallAttached) && (spanY >= 2 || c.isWallAttached)) {
+      var effMinX = (c.isWallAttached && c.effMinX !== undefined) ? c.effMinX : c.minX;
+      var effMaxX = (c.isWallAttached && c.effMaxX !== undefined) ? c.effMaxX : c.maxX;
+      var effMinY = (c.isWallAttached && c.effMinY !== undefined) ? c.effMinY : c.minY;
+      var effMaxY = (c.isWallAttached && c.effMaxY !== undefined) ? c.effMaxY : c.maxY;
+
+      // Per gli arredi accostati a parete, chiudi automaticamente la parete perimetrale esterna retrostante specifica
+      if (c.isWallAttached && c.wallSides && c.wallSides.length > 0) {
+        // Parete OVEST
+        if (c.wallSides.indexOf('west') !== -1) {
+          for (var wy = effMinY; wy <= effMaxY; wy++) {
+            if (mapObj.grid[wy]) {
+              mapObj.grid[wy][0] = 1;
+              if (mapObj.logOddsGrid && mapObj.logOddsGrid[wy]) mapObj.logOddsGrid[wy][0] = 3.5;
+            }
+          }
+          effMinX = 1;
+        }
+        // Parete EST
+        if (c.wallSides.indexOf('east') !== -1) {
+          for (var wy = effMinY; wy <= effMaxY; wy++) {
+            if (mapObj.grid[wy]) {
+              mapObj.grid[wy][mapObj.width - 1] = 1;
+              if (mapObj.logOddsGrid && mapObj.logOddsGrid[wy]) mapObj.logOddsGrid[wy][mapObj.width - 1] = 3.5;
+            }
+          }
+          effMaxX = mapObj.width - 2;
+        }
+        // Parete NORD
+        if (c.wallSides.indexOf('north') !== -1) {
+          for (var wx = effMinX; wx <= effMaxX; wx++) {
+            if (mapObj.grid[0]) {
+              mapObj.grid[0][wx] = 1;
+              if (mapObj.logOddsGrid && mapObj.logOddsGrid[0]) mapObj.logOddsGrid[0][wx] = 3.5;
+            }
+          }
+          effMinY = 1;
+        }
+        // Parete SUD
+        if (c.wallSides.indexOf('south') !== -1) {
+          for (var wx = effMinX; wx <= effMaxX; wx++) {
+            if (mapObj.grid[mapObj.height - 1]) {
+              mapObj.grid[mapObj.height - 1][wx] = 1;
+              if (mapObj.logOddsGrid && mapObj.logOddsGrid[mapObj.height - 1]) mapObj.logOddsGrid[mapObj.height - 1][wx] = 3.5;
+            }
+          }
+          effMaxY = mapObj.height - 2;
+        }
       }
 
+      // Riempimento solido del corpo dell'arredo (solo celle sconosciute in ombra, rispetta lo spazio libero confermato)
       for (var gy = effMinY; gy <= effMaxY; gy++) {
         for (var gx = effMinX; gx <= effMaxX; gx++) {
-          if (mapObj.grid[gy]) {
+          if (mapObj.grid[gy] && mapObj.grid[gy][gx] !== 0) {
             mapObj.grid[gy][gx] = 1;
             if (mapObj.logOddsGrid && mapObj.logOddsGrid[gy]) {
               mapObj.logOddsGrid[gy][gx] = Math.max(3.0, mapObj.logOddsGrid[gy][gx]);
@@ -257,55 +431,25 @@ function updateSemanticLandmarksFromClusters(mapObj, clusters) {
   if (!mapObj.semanticLandmarks) mapObj.semanticLandmarks = [];
   var maxSpanX = Math.floor(mapObj.width * 0.6);
   var maxSpanY = Math.floor(mapObj.height * 0.6);
-  var groundTruthWalls = (typeof arenaObjects !== 'undefined' && arenaObjects.walls) ? arenaObjects.walls : [];
 
-  clusters.forEach(function(c, idx) {
+  clusters.forEach(function(c) {
     var spanX = c.maxX - c.minX + 1;
     var spanY = c.maxY - c.minY + 1;
     if (spanX >= maxSpanX && spanY >= maxSpanY) return;
 
     var pos = slamGridToWorld((c.minX + c.maxX) / 2, (c.minY + c.maxY) / 2);
 
-    // Associa l'arredo ground truth più vicino per vicinanza spaziale (< 180 px)
-    var matchedWall = groundTruthWalls.find(function(w) {
-      var cx = w.x + w.w / 2, cy = w.y + w.h / 2;
-      return Math.hypot(cx - pos.x, cy - pos.y) < 180;
-    });
-
-    var name = matchedWall ? matchedWall.name : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? 'Tavolo' : 'Sedia');
-    var icon = matchedWall ? matchedWall.icon : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? '🍽️' : '🪑');
-    var objType = matchedWall ? (matchedWall.category || 'furniture') : ((c.larghezzaM >= 0.5 && c.profonditaM >= 0.5) ? 'table' : 'chair');
-
+    // Se esiste già un landmark verificato dal VLM vicino al cluster, aggiorna le dimensioni geometriche
     var existingIdx = mapObj.semanticLandmarks.findIndex(function(item) {
-      return Math.hypot(item.x - pos.x, item.y - pos.y) < 60;
+      return Math.hypot(item.x - pos.x, item.y - pos.y) < 60 && item.vlmVerified;
     });
 
-    if (existingIdx < 0) {
-      mapObj.semanticLandmarks.push({
-        id: 'obj_' + (idx + 1),
-        type: objType,
-        name: icon + ' ' + name,
-        label: icon + ' ' + name,
-        display: icon + ' ' + name,
-        icon: icon,
-        x: pos.x,
-        y: pos.y,
-        w: c.larghezzaM * 100,
-        h: c.profonditaM * 100,
-        vlmVerified: true,
-        isStaticWall: false
-      });
-    } else {
+    if (existingIdx >= 0) {
       var lm = mapObj.semanticLandmarks[existingIdx];
-      lm.name = icon + ' ' + name;
-      lm.label = icon + ' ' + name;
-      lm.display = icon + ' ' + name;
-      lm.icon = icon;
       lm.x = (lm.x + pos.x) / 2;
       lm.y = (lm.y + pos.y) / 2;
       lm.w = c.larghezzaM * 100;
       lm.h = c.profonditaM * 100;
-      lm.vlmVerified = true;
     }
   });
 }

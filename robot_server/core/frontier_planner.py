@@ -49,7 +49,7 @@ class FrontierPlanner:
         counts.sort(key=lambda item: item['count'], reverse=True)
         return counts[0]
 
-    def rank_frontiers(self, frontiers, grid, start_grid_pos):
+    def rank_frontiers(self, frontiers, grid, start_grid_pos, current_heading=None):
         if not frontiers:
             return []
         sx, sy = start_grid_pos
@@ -64,7 +64,16 @@ class FrontierPlanner:
             min_y, max_y = max(0, fy - 6), min(height, fy + 7)
             unexplored = int(np.sum(grid[min_y:max_y, min_x:max_x] == -1))
             in_blind = 35.0 if ((fx >= mid_x) == bq['qx'] and (fy >= mid_y) == bq['qy']) else 0.0
-            return (unexplored * 3.0) + in_blind - (dist * 0.7)
+
+            turn_penalty = 0.0
+            if current_heading is not None:
+                angle_to_f = math.atan2(fy - sy, fx - sx)
+                d_ang = abs(angle_to_f - current_heading)
+                while d_ang > math.pi:
+                    d_ang = abs(d_ang - 2 * math.pi)
+                turn_penalty = d_ang * 15.0
+
+            return (unexplored * 3.0) + in_blind - (dist * 0.7) - turn_penalty
 
         return sorted(frontiers, key=score_frontier, reverse=True)
 
@@ -84,8 +93,41 @@ class FrontierPlanner:
         candidates.sort(key=lambda c: c[1])
         return candidates[0][0]
 
+    def is_line_clear(self, p1, p2, dilated_grid):
+        """Verifica se la linea retta tra p1 e p2 è priva di ostacoli dilatati."""
+        x1, y1 = p1
+        x2, y2 = p2
+        dist = math.hypot(x2 - x1, y2 - y1)
+        steps = max(1, int(math.ceil(dist * 2)))
+        height, width = dilated_grid.shape
+        for s in range(1, steps):
+            t = s / steps
+            gx = int(round(x1 + (x2 - x1) * t))
+            gy = int(round(y1 + (y2 - y1) * t))
+            if not (0 <= gx < width and 0 <= gy < height):
+                return False
+            if dilated_grid[gy, gx] == 1:
+                return False
+        return True
+
+    def smooth_path(self, path, dilated_grid):
+        """Algoritmo String Pulling: condensa la traiettoria A* ortogonale in segmenti rettilinei puliti."""
+        if not path or len(path) <= 2:
+            return path
+        smoothed = [path[0]]
+        cur_idx = 0
+        while cur_idx < len(path) - 1:
+            furthest_idx = cur_idx + 1
+            for test_idx in range(len(path) - 1, cur_idx + 1, -1):
+                if self.is_line_clear(path[cur_idx], path[test_idx], dilated_grid):
+                    furthest_idx = test_idx
+                    break
+            smoothed.append(path[furthest_idx])
+            cur_idx = furthest_idx
+        return smoothed
+
     def plan_path(self, start, goal, dilated_grid, costmap=None):
-        """Calcola la traiettoria ottima con l'algoritmo A* sulla griglia con ostacoli dilatati e gradiente di costo."""
+        """Calcola la traiettoria ottima con A* e la rifinisce con String Pulling."""
         height, width = dilated_grid.shape
         sx, sy, gx, gy = start[0], start[1], goal[0], goal[1]
         if not (0 <= sx < width and 0 <= sy < height and 0 <= gx < width and 0 <= gy < height) or dilated_grid[gy, gx] == 1:
@@ -101,7 +143,7 @@ class FrontierPlanner:
                     current = came_from[current]
                     path.append(current)
                 path.reverse()
-                return path
+                return self.smooth_path(path, dilated_grid)
 
             cx, cy = current
             for dx, dy, cost in [(1,0,1), (-1,0,1), (0,1,1), (0,-1,1), (1,1,1.414), (-1,1,1.414), (1,-1,1.414), (-1,-1,1.414)]:

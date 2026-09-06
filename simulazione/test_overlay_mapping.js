@@ -38,18 +38,25 @@ function runMappingTest() {
     sim.solidifyClusterInteriors();
   }
 
-  const W = 446, H = 438, bordo = 12;
-  const gridW = sim.slamMap.width;  // 70
-  const gridH = sim.slamMap.height; // 52
+  const W = 2100, H = 1560, bordo = 12;
+  const gridW = sim.slamMap.width;
+  const gridH = sim.slamMap.height;
 
-  const cellPxX = W / gridW; // ~6.371 px/cella
-  const cellPxY = H / gridH; // ~8.423 px/cella
-  const cellAspect = cellPxY / cellPxX; // 1.322 -> le celle NON sono quadrate!
+  const cellPxX = W / gridW;
+  const cellPxY = H / gridH;
+  const cellAspect = cellPxY / cellPxX;
 
   const walls = sim.arenaObjects.walls;
-  const isGroundTruthWall = (x, y) => {
-    return x < bordo || x > W - bordo || y < bordo || y > H - bordo ||
-      walls.some(m => x >= m.x && x <= m.x + m.w && y >= m.y && y <= m.y + m.h);
+  const isGroundTruthWall = (gx, gy) => {
+    const x0 = gx * cellPxX, x1 = (gx + 1) * cellPxX;
+    const y0 = gy * cellPxY, y1 = (gy + 1) * cellPxY;
+    if (x0 < bordo || x1 > W - bordo || y0 < bordo || y1 > H - bordo) return true;
+    for (const m of walls) {
+      if (Math.max(x0, m.x) < Math.min(x1, m.x + m.w) && Math.max(y0, m.y) < Math.min(y1, m.y + m.h)) {
+        return true;
+      }
+    }
+    return false;
   };
 
   let trueWallCells = 0;
@@ -66,7 +73,7 @@ function runMappingTest() {
     const rowComp = [];
     for (let gx = 0; gx < gridW; gx++) {
       const worldPos = sim.slamGridToWorld(gx, gy);
-      const isGTWall = isGroundTruthWall(worldPos.x, worldPos.y);
+      const isGTWall = isGroundTruthWall(gx, gy);
       const mappedVal = sim.slamMap.grid[gy][gx]; // -1, 0, 1
 
       if (isGTWall) trueWallCells++;

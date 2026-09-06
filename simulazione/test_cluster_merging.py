@@ -21,7 +21,19 @@ def test_vlm_expanded_vocabulary():
         ("a wooden chair", "sedia"),
         ("sgabello alto", "sedia"),
         ("kitchen stove and cooktop", "piano_cottura"),
-        ("frigorifero grande", "frigorifero")
+        ("kitchenette with induction hob", "piano_cottura"),
+        ("cooking area countertop and sink", "piano_cottura"),
+        ("frigorifero grande", "frigorifero"),
+        ("tall metallic fridge", "frigorifero"),
+        ("refrigeration unit appliance", "frigorifero"),
+        ("wooden sideboard cabinet", "credenza"),
+        ("storage unit with shelves", "credenza"),
+        ("credenza and display cupboard", "credenza"),
+        ("a comfortable living room sofa", "divano"),
+        ("blue fabric couch", "divano"),
+        ("upholstered sectional seating", "divano"),
+        ("leather armchair and settee", "divano"),
+        ("poltrona imbottita da salotto", "divano")
     ]
     
     for text, expected_id in test_cases:

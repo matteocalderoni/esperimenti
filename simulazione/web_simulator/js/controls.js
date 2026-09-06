@@ -18,6 +18,8 @@ function initKeyboardControls() {
       case 'KeyK': sendCommand('down'); break;
       case 'KeyJ': sendCommand('lookleft'); break;
       case 'KeyL': sendCommand('lookright'); break;
+      case 'Digit8': sendCommand('exploration'); break;
+      case 'Digit9': sendCommand('inspectionTour'); break;
       case 'Space': sendCommand('DS'); sendCommand('TS'); sendCommand('home'); break;
     }
   });

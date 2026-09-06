@@ -75,7 +75,7 @@ function applyLocalCommand(cmd) {
   else if (cmd === 'trackLight') robotState.activeMode = 'trackLight';
   else if (cmd === 'exploration') {
     robotState.activeMode = 'exploration';
-    robotState.engineMode = 'JS'; // L'esplorazione richiede il motore JS
+    robotState.engineMode = 'JS';
     // Reset griglia SLAM per nuova sessione di mappatura
     if (typeof initSlamGrid === 'function') {
       initSlamGrid();
@@ -89,19 +89,32 @@ function applyLocalCommand(cmd) {
       slamMap.stepCounter = 0;
       slamMap.stats = { freeCells: 0, wallCells: 0, exploredPct: 0 };
     }
-    if (typeof startExplorationBridge === 'function') {
-      startExplorationBridge();
+    // Disabilita pulsante Tour finché la Fase 1 non è terminata
+    var btn = document.getElementById('btnInspectionTour');
+    if (btn) {
+      btn.disabled = true;
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'not-allowed';
+      btn.style.boxShadow = 'none';
+      btn.innerHTML = '2. 🔍 Riconosci Arredi (VLM)';
     }
   }
-  else if (cmd === 'stopCV' || cmd === 'automaticOff' || cmd === 'trackLineOff' || cmd === 'trackLightOff' || cmd === 'keepDistanceOff' || cmd === 'explorationOff') {
+  else if (cmd === 'inspectionTour') {
+    robotState.activeMode = 'inspectionTour';
+    robotState.engineMode = 'JS';
+    if (typeof startInspectionTour === 'function') {
+      startInspectionTour();
+    }
+  }
+  else if (cmd === 'stopCV' || cmd === 'automaticOff' || cmd === 'trackLineOff' || cmd === 'trackLightOff' || cmd === 'keepDistanceOff' || cmd === 'explorationOff' || cmd === 'inspectionTourOff') {
     robotState.activeMode = 'PT';
     robotState.policeActive = false;
     robotState.targetHeading = null;
     robotState.speed = 0;
     robotState.steering = 0;
     robotState.panAngle = 0;
-    if (typeof stopExplorationBridge === 'function') {
-      stopExplorationBridge();
+    if (typeof tourState !== 'undefined') {
+      tourState.active = false;
     }
     if (cmd === 'stopCV' && ws && ws.readyState === WebSocket.OPEN) {
       ws.send('automaticOff');
