@@ -50,15 +50,23 @@ Permette di eseguire l'intera codebase su qualsiasi PC/Mac senza librerie Raspbe
 
 ### 3. Simulatore Web 2D Interattivo & Visuale 3D (`simulazione/web_simulator/`)
 Un'interfaccia grafica modulare responsive per il browser raggiungibile su **`http://localhost:5000/simulator`**:
-* **Arena Top-Down 2D**: Campo di prova con tracciato a linea nera, ostacoli con collisioni rigide, pallina verde OpenCV e sensori di prossimità avanzati.
-* **Mappatura SLAM in Tempo Reale**: Canvas dedicato alla piantina ricostruita (`render_map.js`) con Occupancy Grid a celle libere/muri e percorsi di frontiera calcolati con $A^*$.
+* **Arena Top-Down 2D**: Campo di prova realistico con mobili fotografici ad alta risoluzione, tracciato a linea nera, ostacoli con collisioni rigide e sensori di prossimità avanzati.
+* **Mappatura SLAM Isometrica 2D in Tempo Reale**: Canvas dedicato alla piantina ricostruita (`render_map.js`) con Occupancy Grid a celle perfettamente quadrate ($70 \times 52$, $30 \times 30\text{ px} = 18.75 \times 18.75\text{ cm}$ per cella, **0.0% di distorsione geometrica**), chiusura ermetica delle pareti perimetrali (`stitchPerimeterWallGaps`) ed estrazione ostacoli a parete a piena profondità (`wallSides`).
+* **Visualizzatore Tavola Architettonica CAD & Blueprint HD**: Modalità a doppio tema (White CAD pulito con campitura a 45° e quote metriche vs Blueprint Tecnico Neon) e cartiglio automatico di destinazione d'uso.
 * **Telecamera FPV 3D WebGL (Three.js)**: Visuale tridimensionale immersiva renderizzata in tempo reale in base all'orientamento del robot e alla testa Pan-Tilt (`three_scene.js`).
-* **Architettura Modulare JS**: Divisa nei moduli `kinematics.js`, `sensors.js`, `raycasting_sensor.js`, `obstacle_guard.js` e nei comportamenti autonomi in `behaviors/` (`automatic.js`, `exploration.js`, `find_color.js`, `track_line.js`, `track_light.js`, `keep_distance.js`).
+* **Architettura Modulare JS**: Divisa nei moduli `kinematics.js`, `sensors.js`, `raycasting_sensor.js`, `obstacle_guard.js`, `slam/` e nei comportamenti autonomi in `behaviors/` (`automatic.js`, `exploration.js`, `inspection_tour.js`, `find_color.js`, `track_line.js`, `track_light.js`, `keep_distance.js`).
 * **Selettore Engine Automazioni (JS Experimental vs Python Server)**: Switch nella barra di navigazione che permette di alternare in tempo reale tra i nuovi algoritmi JS locali ed il backend Python nativo del server (`Functions.py`).
 
-### 4. Modulo di Esplorazione Autonoma e Visione VLM (`robot_server/core/` & `vision/`)
-* **Occupancy Grid & Frontier Planner**: Generazione autonoma della mappa 2D e calcolo di traiettorie A* per raggiungere le aree inesplorate (`occupancy_grid.py`, `frontier_planner.py`).
-* **Vision-Language Model (VLM Ollama)**: Ispezione visiva dei frame FPV tramite modelli locali LLaVA per il riconoscimento di porte, quadri e landmark semantici (`vlm_inspector.py`).
+### 4. Architettura a Due Fasi: Esplorazione Metrica & Tour Ispezione VLM
+Il sistema adotta una netta separazione logico-funzionale per rispondere alle reali esigenze professionali (geometri, architetti, periti):
+* **Fase 1: Mappatura Metrica e Planimetria CAD**:
+  * Esplorazione autonoma a frontiere ($A^*$) e modalità Hunter (fino al **99% di copertura**).
+  * Chiusura geometrica continua dei 4 muri perimetrali e rilevamento dei cluster d'arredo addossati a muro o isolati con relative quote in centimetri.
+  * **Al termine della Fase 1 il robot si arresta**: non viene avviata automaticamente alcuna fase successiva, preservando tempo e risorse.
+* **Fase 2: Tour di Ispezione Visiva VLM (Su Richiesta Utente)**:
+  * Avviabile a discrezione dell'utente cliccando sul pulsante dedicato **"Avvia Tour Ispezione VLM"**.
+  * **Navigazione & Allineamento Continuo**: Raggiungimento progressivo del vantage point con frenata DWA e rotazione sul posto continua (**pivot turn fluido $\omega \le 2.2\text{ rad/s}$**, eliminando qualsiasi teletrasporto o scatto artificiale).
+  * **Classificazione Visiva Pura (Ollama Moondream2)**: Riconoscimento semantico Open-Vocabulary basato unicamente sull'ispezione visiva FPV via Ollama Moondream2 (1.6B parametri), privo di vincoli rigidi o assunzioni sulle dimensioni geometriche dell'arredo.
 
 ---
 
@@ -109,13 +117,32 @@ Naviga su:
 * **Simulatore Web 2D**: [http://127.0.0.1:5000/simulator](http://127.0.0.1:5000/simulator)
 * **Pannello Classico**: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-### 5. Eseguire i Test Didattici
-Dalla radice del progetto (con `venv` attivo):
-```bash
-PYTHONPATH=mock_hardware python simulazione/test_passo_6.py
-```
+### 5. Eseguire i Test Didattici e di Mappatura SLAM
+Dalla radice del progetto:
+
+* **Test Didattici Hardware / OpenCV**:
+  ```bash
+  source venv/bin/activate
+  PYTHONPATH=mock_hardware python simulazione/test_passo_6.py
+  ```
+
+* **Test Automatici SLAM, Cluster & Posizionamento Continuo (Node.js)**:
+  ```bash
+  # Test estrazione cluster e tolleranza unione
+  node simulazione/test_slam_clusters.js
+
+  # Test ostacoli a parete e separazione muro/arredo
+  node simulazione/test_wall_attached_object.js
+
+  # Test cinematica rotazione continua (zero teletrasporto)
+  node simulazione/test_continuous_alignment.js
+
+  # Test sovrapposizione geometrica e fedeltà planimetria (0.0% distorsione)
+  node simulazione/test_overlay_mapping.js
+  ```
 
 ---
 
 ## 📝 Registro Modifiche Dettagliato
 Per l'elenco dettagliato di tutti i bug del codice originale corretti, le ottimizzazioni ed il registro passo-passo dei capitoli, consulta il file **[modifiche_e_simulazione.md](file:///Users/mauroi/Documents/esperimenti/modifiche_e_simulazione.md)**.
+

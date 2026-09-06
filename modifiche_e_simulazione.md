@@ -33,7 +33,7 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 
 5. **Sviluppo & Potenziamento del Modulo di Esplorazione Autonoma 2D & SLAM (`core/` & `behaviors/exploration.js`)**:
    * **Occupancy Grid 2D 100% Ignota & Dilatazione 30px**: Matrice $70 \times 52$ che parte completamente priva di muri artificiali preimpostati (tutte le celle a `-1`); i muri e i confini vengono scoperti unicamente mediante raycasting e dilatati a 3 celle (30 px) per il passaggio del robot.
-   * **Simulazione Cucina Abitabile & Riconoscimento VLM**: Sostituzione dei blocchi generici con mobili ed elettrodomestici realistici (piano cottura, frigo, tavolo, penisola, credenza), identificati in prospettiva con bounding box AI VLM (Ollama LLaVA).
+   * **Simulazione Cucina Abitabile & Asset Fotografici**: Arredi ed elettrodomestici realistici ad alta definizione (piano cottura, frigo, tavolo, credenza).
    * **Tavola Architettonica CAD con Simboli d'Arredo (`cad_renderer.js`)**: Campitura muraria a 45°, quote metriche su ciascun mobile/tramezzo, simboli grafici di arredo e cartiglio con destinazione d'uso *Cucina Abitabile*.
    * **Doppia Scansione Panoramica a 360° con Rotazione 180°**: Scansione iniziale Pan-Tilt, verifica assenza ostacoli adiacenti, rotazione sul posto del telaio di 180° e seconda scansione per mappare a 360° l'intero intorno di partenza.
    * **Euristica Information Gain & Hunter Mode per Target 99%**: Ranking frontiere per macro-settori ciechi e algoritmo Hunter per individuare e ripulire anche gli ultimi micro-angoli inesplorati fino al raggiungimento del **99% di copertura**.
@@ -44,7 +44,18 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 
 7. **Visuale Immersiva 3D WebGL Three.js & Integrazione Visione VLM Ollama (`three_scene.js` & `vlm_inspector.py`)**:
    * Rendering 3D a 60 FPS con telecamera ancorata alla testa Pan-Tilt.
-   * Riconoscimento semantico di landmark visivi (`porta_rossa`, `quadro_blu`, `pallina_verde`, `faro_giallo`) interrogando in background il modello locale VLM (LLaVA) tramite API Ollama.
+   * Modello Vision-Language locale ad alte prestazioni **Ollama Moondream2 (1.6B Q4_K_M)** per la percezione semantica visiva open-vocabulary in tempo reale (<1.5s per frame).
+
+8. **Perfezionamento Mappatura Isometrica 2D SLAM, Riconoscimento Ostacoli a Parete e Tour VLM Continuo (`slam/` & `inspection_tour.js`)**:
+   * **Griglia Isometrica a Celle Quadrate ($70 \times 52$, $30 \times 30\text{ px}$)**: Risoluzione del problema di allungamento/schiacciamento geometrico con scala metrica identica ($18.75 \times 18.75\text{ cm}$ per cella, **0.0% di distorsione** rispetto all'arena reale di $2100 \times 1560\text{ px}$).
+   * **Riconoscimento Ostacoli a Parete a Piena Profondità (`slam_clusters.js`)**: Algoritmo `minDist` e rilevamento delle pareti adiacenti (`wallSides`). Gli ostacoli addossati ai muri (piano cottura, frigo, credenza) conservano la loro profondità intera e non vengono fusi o decapitati nei muri perimetrali.
+   * **Sigillatura Continua Muri Perimetrali (`stitchPerimeterWallGaps`)**: Algoritmo di interpolazione lineare protetta per chiudere ermeticamente le 4 pareti perimetrali (Nord, Sud, Est, Ovest), eliminando i varchi dovuti all'ombra di occlusione degli arredi addossati.
+   * **Eliminazione Euristica Dimensioni**: Rimossa la classificazione basata sulle dimensioni fisiche (inattendibile nella realtà per la varietà di oggetti con dimensioni simili); il riconoscimento è affidato al **100% alla visione ottica VLM**.
+   * **Separazione Rigorosa Fase 1 e Fase 2**:
+     - *Fase 1*: Esplorazione metrica autonoma fino al 99% con arresto completo del robot. Nessun avvio automatico della fase 2 per preservare tempo operativo.
+     - *Fase 2*: Tour d'ispezione VLM avviato manualmente dal geometra/utente tramite pulsante dedicato.
+   * **Navigazione & Allineamento Continuo (Zero Teletrasporto)**: Inseguimento progressivo con frenata graduale DWA verso il punto di osservazione e rotazione in-place continua (**pivot turn $\omega \le 2.2\text{ rad/s}$**) per inquadrare il centro dell'arredo prima dello scatto FPV.
+   * **Visualizzatore Blueprint HD**: Visualizzazione avanzata della piantina con selettore tema White CAD / Blueprint Neon e download PNG ad alta risoluzione.
 
 ---
 
@@ -78,7 +89,10 @@ Questo documento contiene l'elenco completo ed analitico di **tutti i lavori svo
 | **Console/Terminale** | ❌ Intasata da scritte `loop` ad ogni iterazione dello schermo | ✅ Banner visivi con icone (`════`) e log ad albero (`   └─ 🚗`) |
 | **Spegnimento Funzioni** | ❌ `stopCV` non fermava i thread background dei motori | ✅ Arresto istantaneo dei motori e dei thread con `fuc.pause()` |
 | **Simulazione Grafica** | ❌ Assente (solo terminale di testo) | ✅ Arena 2D interattiva, telecamera FPV 3D Three.js e mappa SLAM |
-| **Mappatura & Esplorazione** | ❌ Assente | ✅ SLAM Occupancy Grid, Frontier Clustering, Pathfinding $A^*$ |
-| **Visione Intelligente VLM**| ❌ Assente | ✅ Integrazione semantica locale Ollama per riconoscimento landmark |
+| **Mappatura & Esplorazione** | ❌ Assente | ✅ SLAM Isometrico 2D ($70 \times 52$), pareti ermetiche, ostacoli a parete e $A^*$ |
+| **Visione Intelligente VLM**| ❌ Assente | ✅ Ispezione visiva pura Open-Vocabulary con Ollama Moondream2 (1.6B Q4_K_M) |
+| **Cinematica Tour Ispezione**| ❌ Assente | ✅ Posizionamento continuo con pivot turn fluido ($\omega \le 2.2\text{ rad/s}$), zero teletrasporto |
+| **Separazione dei Flussi** | ❌ Assente | ✅ Fase 1 (Mappa geometrica) e Fase 2 (Tour VLM) separate e controllabili |
 | **Struttura Software** | ❌ File monolitici lunghi e confusi | ✅ Architettura modulare conforme alla Costituzione (SRP e max 150 righe) |
 | **Selettore Engine IA** | ❌ Assente | ✅ Switch nell'interfaccia tra 🧪 `JS Experimental` e 🐍 `Python Server` |
+

@@ -54,6 +54,11 @@ Anziché vincolare il robot a una scelta multipla rigida o a un catalogo chiuso 
 2. **Distanza d'Impatto Reale**: Eliminato il valore fisso arbitrario a 80 pixel. Il punto dell'oggetto viene ricavato dal raggio ultrasuoni/raycast reale $d_{\text{sensore}}$ dove la superficie visibile è stata effettivamente rilevata.
 3. **Offset della Solidificazione Solida**: Il punto visibile viene trattato come **faccia anteriore dell'oggetto**, arricchendo l'ingombro solido nella griglia SLAM all'indietro e lasciando libero il passaggio frontale per il robot.
 
+### C. Riconoscimento Puramente Visivo & Allineamento Continuo
+1. **Eliminazione Euristica Dimensionale**: Rimossa qualsiasi logica euristica di classificazione basata sulle dimensioni metriche (inapplicabile sul robot reale per la varietà sterminata di oggetti di taglie analoghe). La classificazione semantica è demandata al **100% alla visione ottica VLM**.
+2. **Flussi Operativi Separati**: Fase 1 di mappatura metrica autonoma con arresto completo al 99%; Fase 2 di tour d'ispezione visiva avviata unicamente su comando esplicito dell'utente.
+3. **Posizionamento Continuo (Zero Teletrasporto)**: Inseguimento progressivo del vantage point con decelerazione DWA e rotazione sul posto continua (**pivot turn $\omega \le 2.2\text{ rad/s}$**), garantendo fedeltà fisica perfetta tra simulazione e robot reale.
+
 ---
 
 ## 3. Scheda Tecnica del Modello (Moondream2)
