@@ -25,5 +25,5 @@ class Radar:
             result.append([dist, theta])
             time.sleep(0.02)
     
-        self.sc_gear.set_angle(0, 90)
+        self.sc_gear.moveAngle(0, 0)
         return result
