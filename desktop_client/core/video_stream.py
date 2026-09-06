@@ -1,7 +1,7 @@
-# core/video_stream.py
 import subprocess
 import sys
 import os
+import config.settings as settings
 
 video_process = None
 
@@ -15,11 +15,9 @@ def start_video_stream():
     
     if video_process is None or video_process.poll() is not None:
         try:
-            print("Avvio del flusso video in un processo separato...")
-            # Usiamo sys.executable per garantire l'uso dello stesso interprete Python
-            video_process = subprocess.Popen([sys.executable, receiver_path],
-                                             stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE)
+            target_ip = getattr(settings, 'target_ip', '127.0.0.1')
+            print(f"Avvio del flusso video per {target_ip} in un processo separato...")
+            video_process = subprocess.Popen([sys.executable, receiver_path, target_ip])
         except Exception as e:
             print(f"Impossibile avviare il flusso video: {e}")
 

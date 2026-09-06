@@ -45,17 +45,26 @@ class SensorPanel:
         if total_number == 0:
             return
             
-        for i in range(0, total_number):
+        for i, item in enumerate(info):
             try:
-                dis_info_get = float(info[i])
-            except ValueError:
+                if isinstance(item, (list, tuple)):
+                    dis_info_get = float(item[0])
+                    theta = float(item[1]) if len(item) > 1 else None
+                else:
+                    dis_info_get = float(item)
+                    theta = None
+            except (ValueError, TypeError, IndexError):
                 continue
                 
-            if dis_info_get > 0:
+            if 0 < dis_info_get <= 300:
                 # Calcola posizioni e lunghezze proporzionali
                 len_dis_1 = int((dis_info_get / self.x_range))
-                pos = int((i / total_number) * 320)
-                pos_ra = int(((i / total_number) * 140) + 20)  # Range di direzione scalato (20-160)
+                if theta is not None:
+                    pos_ra = max(0, min(180, int(theta)))
+                    pos = int((pos_ra / 180.0) * 320)
+                else:
+                    pos = int((i / total_number) * 320)
+                    pos_ra = int(((i / total_number) * 140) + 20)  # Range di direzione scalato (20-160)
                 len_dis = int(len_dis_1 * (math.sin(math.radians(pos_ra))))
                 
                 y0_l = 250 - len_dis

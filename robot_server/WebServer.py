@@ -108,11 +108,13 @@ def functionSelect(command_input, response):
             screen.screen_show(5,'FindColor')
         if modeSelect == 'PT':
             flask_app.modeselect('findColor')
+        response['title'] = 'findColor'
 
     elif 'motionGet' == command_input:
         if OLED_connection:
             screen.screen_show(5,'MotionGet')
         flask_app.modeselect('watchDog')
+        response['title'] = 'motionGet'
 
     elif 'stopCV' == command_input:
         if OLED_connection:
@@ -128,6 +130,7 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
 
     elif 'automatic' == command_input:
         if OLED_connection:
@@ -136,6 +139,7 @@ def functionSelect(command_input, response):
             fuc.automatic()
         else:
             fuc.pause()
+        response['title'] = 'automatic'
 
     elif 'automaticOff' == command_input:
         if OLED_connection:
@@ -144,12 +148,14 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
 
     elif 'trackLine' == command_input:
         functions.last_status = None
         fuc.trackLine()
         if OLED_connection:
             screen.screen_show(5,'TrackLine')
+        response['title'] = 'trackLine'
 
     elif 'trackLineOff' == command_input:
         if OLED_connection:
@@ -158,12 +164,14 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
         
     elif 'trackLight' == command_input:
         functions.last_status = 0
         fuc.trackLight()
         if OLED_connection:
             screen.screen_show(5,'TrackLight')
+        response['title'] = 'trackLight'
 
     elif 'trackLightOff' == command_input:
         if OLED_connection:
@@ -172,12 +180,13 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
 
     elif 'police' == command_input:
         if OLED_connection:
             screen.screen_show(5,'Police')
         ws2812.police()
-        pass
+        response['title'] = 'police'
 
     elif 'policeOff' == command_input:
         if OLED_connection:
@@ -186,17 +195,20 @@ def functionSelect(command_input, response):
             ws2812.pause()
         except:
             pass
+        response['title'] = 'policeOff'
 
     elif 'keepDistance' == command_input:
         functions.last_status = 25
         fuc.keepDistance()
         if OLED_connection:
             screen.screen_show(5,'KeepDistance')
+        response['title'] = 'keepDistance'
 
     elif command_input in ('exploration', 'start_slam'):
         if OLED_connection:
             screen.screen_show(5,'Exploration')
         fuc.exploration()
+        response['title'] = 'start_slam'
 
     elif command_input == 'explorationOff':
         if OLED_connection:
@@ -205,17 +217,20 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
 
     elif command_input in ('vlmTour', 'start_vlm_tour', 'inspectionTour'):
         if OLED_connection:
             screen.screen_show(5,'VLM Tour')
         threading.Thread(target=fuc.vlm_tour, daemon=True).start()
+        response['title'] = 'vlmTour'
 
     elif 'inspectionTourOff' == command_input:
         if OLED_connection:
             screen.screen_show(5,'FUNCTION OFF')
         fuc.pause()
         move.motorStop()
+        response['title'] = 'stopCV'
 
     elif 'keepDistanceOff' == command_input:
         if OLED_connection:
@@ -224,25 +239,32 @@ def functionSelect(command_input, response):
         move.motorStop()
         time.sleep(0.5)
         move.motorStop()
+        response['title'] = 'stopCV'
 
 def switchCtrl(command_input, response):
     if 'Switch_1_on' in command_input:
         switch.switch(1,1)
+        response['title'] = 'Switch_1_on'
 
     elif 'Switch_1_off' in command_input:
         switch.switch(1,0)
+        response['title'] = 'Switch_1_off'
 
     elif 'Switch_2_on' in command_input:
         switch.switch(2,1)
+        response['title'] = 'Switch_2_on'
 
     elif 'Switch_2_off' in command_input:
         switch.switch(2,0)
+        response['title'] = 'Switch_2_off'
 
     elif 'Switch_3_on' in command_input:
         switch.switch(3,1)
+        response['title'] = 'Switch_3_on'
 
     elif 'Switch_3_off' in command_input:
-        switch.switch(3,0) 
+        switch.switch(3,0)
+        response['title'] = 'Switch_3_off'
 
 
 def robotCtrl(command_input, response):
@@ -558,7 +580,7 @@ async def broadcast_to_ws(message):
         await asyncio.gather(*[client.send(payload) for client in connected_clients], return_exceptions=True)
 
 def handle_tcp_client(tcpCliSock, addr):
-    BUFSIZ = 1024
+    BUFSIZ = 65536
     print(f"[TCP SERVER] Desktop Client connesso da {addr}")
     while True:
         try:
@@ -566,82 +588,104 @@ def handle_tcp_client(tcpCliSock, addr):
             if not raw_bytes:
                 break
             
-            data = raw_bytes.decode('utf-8', errors='ignore')
-            response = {'status': 'ok', 'title': '', 'data': None}
-            
-            try:
-                data_parsed = json.loads(data)
-                data = data_parsed
-            except Exception:
-                pass
-            
-            if isinstance(data, str):
-                robotCtrl(data, response)
-                switchCtrl(data, response)
-                functionSelect(data, response)
-                configPWM(data, response)
+            raw_str = raw_bytes.decode('utf-8', errors='ignore')
+            for line in raw_str.splitlines():
+                cmd_item = line.strip()
+                if not cmd_item:
+                    continue
                 
-                if 'get_info' == data:
-                    response['title'] = 'get_info'
-                    response['data'] = [info.get_cpu_tempfunc(), info.get_cpu_use(), info.get_ram_info()]
+                response = {'status': 'ok', 'title': '', 'data': None}
+                data = cmd_item
+                try:
+                    data = json.loads(cmd_item)
+                except Exception:
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(cmd_item)
+                        if isinstance(parsed, dict):
+                            data = parsed
+                    except Exception:
+                        pass
                 
-                if 'wsB' in data:
-                    try:
-                        set_B = data.split()
-                        global speed_set
-                        speed_set = int(set_B[1])
-                    except Exception:
-                        pass
-                        
-                elif 'CVFL' == data:
-                    camera_opencv.FLCV_Status = 0
-                    flask_app.modeselect('findlineCV')
-                    if OLED_connection:
-                        screen.screen_show(5,'CVLine')
+                if isinstance(data, str):
+                    robotCtrl(data, response)
+                    switchCtrl(data, response)
+                    functionSelect(data, response)
+                    configPWM(data, response)
+                    
+                    if 'get_info' == data:
+                        response['title'] = 'get_info'
+                        response['data'] = [info.get_cpu_tempfunc(), info.get_cpu_use(), info.get_ram_info()]
+                    
+                    elif 'wsB' in data:
+                        try:
+                            set_B = data.split()
+                            global speed_set
+                            speed_set = int(set_B[1])
+                            response['title'] = 'wsB'
+                        except Exception:
+                            pass
+                            
+                    elif 'CVFL' == data:
+                        camera_opencv.FLCV_Status = 0
+                        flask_app.modeselect('findlineCV')
+                        if OLED_connection:
+                            screen.screen_show(5,'CVLine')
+                        response['title'] = 'CVFL_on'
 
-                elif 'CVFLColorSet' in data:
-                    try:
-                        color = int(data.split()[1])
-                        flask_app.camera.colorSet(color)
-                    except Exception:
-                        pass
+                    elif 'Render' == data:
+                        current_render = getattr(camera_opencv, 'frameRender', 0)
+                        flask_app.camera.randerSet(0 if current_render else 1)
+                        response['title'] = 'Render'
 
-                elif 'CVFLL1' in data:
-                    try:
-                        pos = int(data.split()[1])
-                        flask_app.camera.linePosSet_1(pos)
-                    except Exception:
-                        pass
+                    elif 'CVFLColorSet' in data:
+                        try:
+                            color = int(data.split()[1])
+                            flask_app.camera.colorSet(color)
+                            response['title'] = 'CVFLColorSet'
+                        except Exception:
+                            pass
 
-                elif 'CVFLL2' in data:
-                    try:
-                        pos = int(data.split()[1])
-                        flask_app.camera.linePosSet_2(pos)
-                    except Exception:
-                        pass
+                    elif 'CVFLL1' in data:
+                        try:
+                            pos = int(data.split()[1])
+                            flask_app.camera.linePosSet_1(pos)
+                            response['title'] = 'CVFLL1'
+                        except Exception:
+                            pass
 
-                elif 'CVFLSP' in data:
-                    try:
-                        err = int(data.split()[1])
-                        flask_app.camera.errorSet(err)
-                    except Exception:
-                        pass
+                    elif 'CVFLL2' in data:
+                        try:
+                            pos = int(data.split()[1])
+                            flask_app.camera.linePosSet_2(pos)
+                            response['title'] = 'CVFLL2'
+                        except Exception:
+                            pass
 
-                # Broadcast the command to all active WebSocket clients (like the 2D simulator)
-                if data != 'get_info' and async_loop and connected_clients:
-                    asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
+                    elif 'CVFLSP' in data:
+                        try:
+                            err = int(data.split()[1])
+                            flask_app.camera.errorSet(err)
+                            response['title'] = 'CVFLSP'
+                        except Exception:
+                            pass
 
-            elif isinstance(data, dict):
-                if data.get('title') == "findColorSet":
-                    color = data.get('data', [0, 0, 0])
-                    flask_app.colorFindSet(color[0], color[1], color[2])
+                    # Invia in broadcast al simulatore web via WebSocket
+                    if data != 'get_info' and async_loop and connected_clients:
+                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
+
+                elif isinstance(data, dict):
+                    if data.get('title') == "findColorSet":
+                        color = data.get('data', [0, 0, 0])
+                        flask_app.colorFindSet(color[0], color[1], color[2])
+                        response['title'] = 'findColorSet'
+                    
+                    if async_loop and connected_clients:
+                        asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
                 
-                if async_loop and connected_clients:
-                    asyncio.run_coroutine_threadsafe(broadcast_to_ws(data), async_loop)
-            
-            # Send response back to TCP client
-            response_str = json.dumps(response)
-            tcpCliSock.sendall(response_str.encode())
+                # Invia risposta formattata al client TCP con newline delimiter
+                response_str = json.dumps(response) + '\n'
+                tcpCliSock.sendall(response_str.encode('utf-8'))
         except Exception as e:
             print(f"[TCP SERVER EVENT] Desktop Client {addr} errore o disconnessione: {e}")
             break

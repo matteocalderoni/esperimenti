@@ -28,7 +28,7 @@ target_color = '#FF6D00'
 
 # Socket di comunicazione globale
 tcpClicSock = None
-BUFSIZ = 1024
+BUFSIZ = 65536
 
 target_ip = "127.0.0.1"
 

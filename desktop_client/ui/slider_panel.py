@@ -1,6 +1,7 @@
 # ui/slider_panel.py
 import tkinter as tk
 import time
+import json
 import config.settings as settings
 
 class SliderPanel:
@@ -125,7 +126,7 @@ class SliderPanel:
     def on_color_set_press(self, event):
         r, g, b = int(self.var_R.get()), int(self.var_G.get()), int(self.var_B.get())
         h, s, v = self.rgb_to_hsv(r, g, b)
-        message = f"{{'title': 'findColorSet', 'data': [{h}, {s}, {v}]}}"
+        message = json.dumps({'title': 'findColorSet', 'data': [h, s, v]})
         print(message)
         self.send(message)
 
