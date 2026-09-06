@@ -23,10 +23,10 @@ class SliderPanel:
         self.canvas_show = None
         
         # Crea le schede container
-        self.card_line = tk.LabelFrame(parent, text=" Line Tracking ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
+        self.card_line = tk.LabelFrame(parent, text=" Tracciamento Linea ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
         self.card_line.place(x=fl_x, y=fl_y, width=280, height=160)
         
-        self.card_color = tk.LabelFrame(parent, text=" Color Picker ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
+        self.card_color = tk.LabelFrame(parent, text=" Selettore Colore ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
         self.card_color.place(x=fc_x, y=fc_y, width=280, height=160)
         
         self.build_line_tracking_sliders(0, 0)
@@ -67,11 +67,11 @@ class SliderPanel:
         btn_render.place(x=x+180, y=y+55)
         btn_render.bind('<ButtonPress-1>', lambda e: self.send('Render'))
 
-        self.btn_cvfl = tk.Button(self.card_line, width=8, text='CV FL', fg=settings.color_btn_text, bg='#212121', relief='ridge')
+        self.btn_cvfl = tk.Button(self.card_line, width=8, text='Vis. Linea', fg=settings.color_btn_text, bg='#212121', relief='ridge')
         self.btn_cvfl.place(x=x+180, y=y+15)
         self.btn_cvfl.bind('<ButtonPress-1>', self.on_cvfl_press)
 
-        btn_wb = tk.Button(self.card_line, width=8, text='Switch', fg=settings.color_btn_text, bg='#212121', relief='ridge')
+        btn_wb = tk.Button(self.card_line, width=8, text='Inverti', fg=settings.color_btn_text, bg='#212121', relief='ridge')
         btn_wb.place(x=x+180, y=y+95)
         btn_wb.bind('<ButtonPress-1>', self.on_wb_press)
 
@@ -118,7 +118,7 @@ class SliderPanel:
         self.canvas_show = tk.Canvas(self.card_color, bg=initial_hex, height=65, width=80, highlightthickness=0)
         self.canvas_show.place(x=x+180, y=y+15)
 
-        btn_set = tk.Button(self.card_color, width=8, text='Color Set', fg=settings.color_btn_text, bg='#212121', relief='ridge')
+        btn_set = tk.Button(self.card_color, width=8, text='Imposta', fg=settings.color_btn_text, bg='#212121', relief='ridge')
         btn_set.place(x=x+180, y=y+95)
         btn_set.bind('<ButtonPress-1>', self.on_color_set_press)
 

@@ -82,7 +82,7 @@ def connection_loop(sock, callbacks):
         except Exception as e:
             print("Connessione interrotta o errore:", e)
             if 'connection' in callbacks:
-                callbacks['connection']('Disconnected', '#F44336')
+                callbacks['connection']('Disconnesso', '#F44336')
             break
 
 def socket_connect(ip_address, callbacks):
@@ -95,18 +95,18 @@ def socket_connect(ip_address, callbacks):
     
     for i in range(1, 6):
         if settings.ip_stu == 1:
-            print(f"Connecting to server @ {SERVER_IP}:{SERVER_PORT} (Try {i}/5)...")
+            print(f"Connessione al server @ {SERVER_IP}:{SERVER_PORT} (Tentativo {i}/5)...")
             if 'connection' in callbacks:
-                callbacks['connection'](f"Connecting {i}/5", '#FF8F00')
+                callbacks['connection'](f"Connessione {i}/5", '#FF8F00')
             try:
                 settings.tcpClicSock.connect(ADDR)
-                print("Connected!")
+                print("Connesso!")
                 
                 settings.ip_stu = 0 # 0 = Connesso
                 settings.save_ip(SERVER_IP)
                 
                 if 'connection' in callbacks:
-                    callbacks['connection']('Connected', '#558B2F')
+                    callbacks['connection']('Connesso', '#558B2F')
                     
                 # Avvia i thread di ascolto e polling
                 conn_thread = thread.Thread(target=connection_loop, args=(settings.tcpClicSock, callbacks))
@@ -126,5 +126,5 @@ def socket_connect(ip_address, callbacks):
     # Se arriviamo qui, tutti i tentativi sono falliti
     settings.ip_stu = 1
     if 'connection' in callbacks:
-        callbacks['connection']('Disconnected', '#F44336')
+        callbacks['connection']('Disconnesso', '#F44336')
     return False

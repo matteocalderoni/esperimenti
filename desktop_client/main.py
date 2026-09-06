@@ -46,7 +46,7 @@ def on_function_changed(name, active):
 def on_connection_status(text, bg_color):
     """Gestisce l'evento di connessione/disconnessione."""
     info_panel.update_status(text, bg_color)
-    if text == 'Connected':
+    if text == 'Connesso':
         # Avvia il ricevitore video se connesso
         video_stream.start_video_stream()
     else:
@@ -57,7 +57,7 @@ def main():
     global info_panel, slider_panel, feature_panel, sensor_panel
     
     root = tk.Tk()
-    root.title('4WD_Smart_Car (Modular)')
+    root.title('Adeept 4WD Smart Car - Telecomando Desktop')
     root.geometry('1020x650')
     root.resizable(False, False)
     root.config(bg=settings.color_bg)

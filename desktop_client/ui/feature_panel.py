@@ -12,10 +12,10 @@ class FeaturePanel:
         self.sw_buttons = {}
         
         # Crea le due schede container
-        self.card_auto = tk.LabelFrame(parent, text=" Automations & AI ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
+        self.card_auto = tk.LabelFrame(parent, text=" Automazioni & IA ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
         self.card_auto.place(x=func_x, y=func_y, width=320, height=280)
         
-        self.card_pwm = tk.LabelFrame(parent, text=" System Config & Ports ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
+        self.card_pwm = tk.LabelFrame(parent, text=" Configurazione & Porte ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
         self.card_pwm.place(x=pwm_x, y=pwm_y, width=280, height=165)
         
         self.build_function_buttons(0, 0)
@@ -25,14 +25,14 @@ class FeaturePanel:
     def build_function_buttons(self, x, y):
         # Mappa dei comandi on/off associati a ciascun pulsante funzione
         funcs = {
-            'RadarScan': ('scan', 'stopCV'),
-            'Automatic': ('automatic', 'automaticOff'),
-            'FindColor': ('findColor', 'stopCV'),
-            'TrackLine': ('trackLine', 'trackLineOff'),
-            'MotionGet': ('motionGet', 'stopCV'),
-            'SLAM Map': ('start_slam', 'stopCV'),
-            'Police': ('police', 'policeOff'),
-            'VLM Tour': ('vlmTour', 'stopCV')
+            'Radar Scan': ('scan', 'stopCV'),
+            'Evitamento': ('automatic', 'automaticOff'),
+            'Trova Colore': ('findColor', 'stopCV'),
+            'Segui Linea': ('trackLine', 'trackLineOff'),
+            'Rileva Moto': ('motionGet', 'stopCV'),
+            'Mappa SLAM': ('start_slam', 'stopCV'),
+            'Lampeggiante': ('police', 'policeOff'),
+            'Tour VLM': ('vlmTour', 'stopCV')
         }
 
         def on_func_press(name, on_cmd, off_cmd):
@@ -56,7 +56,7 @@ class FeaturePanel:
             self.func_buttons[name] = btn
 
         # Pulsante dedicato View Blueprint CAD
-        btn_bp = tk.Button(self.card_auto, width=28, text='📐 View Blueprint CAD', fg='#000000', bg='#00F2FE', relief='ridge', font=('Helvetica', 9, 'bold'))
+        btn_bp = tk.Button(self.card_auto, width=28, text='📐 Apri Blueprint CAD', fg='#000000', bg='#00F2FE', relief='ridge', font=('Helvetica', 9, 'bold'))
         btn_bp.place(x=x + 20, y=y + 225)
         btn_bp.bind('<ButtonPress-1>', lambda e: self.open_blueprint())
 
@@ -77,11 +77,11 @@ class FeaturePanel:
                 setattr(settings, var_name, 0)
 
         # Label per le porte
-        lbl_ports = tk.Label(self.card_pwm, text='Ports:', fg=settings.color_text, bg='#121212')
+        lbl_ports = tk.Label(self.card_pwm, text='Porte:', fg=settings.color_text, bg='#121212')
         lbl_ports.place(x=x+15, y=y+15)
 
         for i in range(1, 4):
-            btn = tk.Button(self.card_pwm, width=6, text=f'Port {i}', fg=settings.color_btn_text, bg=settings.color_btn, relief='ridge')
+            btn = tk.Button(self.card_pwm, width=6, text=f'Porta {i}', fg=settings.color_btn_text, bg=settings.color_btn, relief='ridge')
             btn.place(x=x + 65 + ((i-1) * 65), y=y+10)
             btn.bind('<ButtonPress-1>', lambda e, n=i: on_switch_press(n))
             self.sw_buttons[i] = btn
@@ -118,20 +118,20 @@ class FeaturePanel:
         btn_r1.place(x=x+180, y=y+80)
         btn_r1.bind('<ButtonPress-1>', lambda e: self.send('SiRight 1'))
 
-        btn_init = tk.Button(self.card_pwm, width=12, text='Init Pos', fg=settings.color_btn_text, bg='#212121', relief='ridge')
+        btn_init = tk.Button(self.card_pwm, width=12, text='Pos. Iniziale', fg=settings.color_btn_text, bg='#212121', relief='ridge')
         btn_init.place(x=x+15, y=y+120)
         btn_init.bind('<ButtonPress-1>', lambda e: self.send('PWMINIT'))
 
-        btn_def = tk.Button(self.card_pwm, width=12, text='Default Set', fg=settings.color_btn_text, bg='#212121', relief='ridge')
+        btn_def = tk.Button(self.card_pwm, width=12, text='Predefinito', fg=settings.color_btn_text, bg='#212121', relief='ridge')
         btn_def.place(x=x+140, y=y+120)
         btn_def.bind('<ButtonPress-1>', lambda e: self.send('PWMD'))
 
     def update_func_color(self, name, active):
         """Cambia colore del bottone funzione (verde = attivo, blu = inattivo)."""
         cmd_to_name = {
-            'scan': 'RadarScan', 'findColor': 'FindColor', 'motionGet': 'MotionGet',
-            'police': 'Police', 'automatic': 'Automatic', 'trackLine': 'TrackLine',
-            'Speech': 'TrackLine', 'trackLight': 'TrackLight', 'keepDistance': 'KeepDistance'
+            'scan': 'Radar Scan', 'findColor': 'Trova Colore', 'motionGet': 'Rileva Moto',
+            'police': 'Lampeggiante', 'automatic': 'Evitamento', 'trackLine': 'Segui Linea',
+            'start_slam': 'Mappa SLAM', 'vlmTour': 'Tour VLM'
         }
         btn_name = cmd_to_name.get(name, name)
         

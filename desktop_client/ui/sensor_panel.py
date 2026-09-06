@@ -12,7 +12,7 @@ class SensorPanel:
         self.x_range = 1.0  # Range in metri (default)
         
         # Crea la card container per il radar
-        self.card = tk.LabelFrame(parent, text=" Ultrasonic Radar ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
+        self.card = tk.LabelFrame(parent, text=" Radar ad Ultrasuoni ", bg='#121212', fg='#29B6F6', bd=1, relief='solid', font=('Helvetica', 10, 'bold'))
         self.card.place(x=x, y=y, width=340, height=280)
         
         # Crea l'oggetto canvas centrandolo all'interno della card
