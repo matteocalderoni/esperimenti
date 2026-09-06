@@ -26,10 +26,15 @@ def connection_loop(sock, callbacks):
     """Loop di ricezione dati dal socket TCP del robot."""
     while True:
         try:
-            car_info = (sock.recv(settings.BUFSIZ)).decode()
-            if not car_info:
-                continue
-            
+            raw_bytes = sock.recv(settings.BUFSIZ)
+            if not raw_bytes:
+                print("⚠️ [TCP CLIENT] Connessione chiusa dal server.")
+                settings.ip_stu = 1
+                if 'connection' in callbacks:
+                    callbacks['connection']('Disconnesso', '#F44336')
+                break
+                
+            car_info = raw_bytes.decode('utf-8', errors='ignore')
             print("car_info:", car_info)
             
             if "get_info" in car_info:
@@ -81,6 +86,7 @@ def connection_loop(sock, callbacks):
                     pass
         except Exception as e:
             print("Connessione interrotta o errore:", e)
+            settings.ip_stu = 1
             if 'connection' in callbacks:
                 callbacks['connection']('Disconnesso', '#F44336')
             break
@@ -91,7 +97,7 @@ def socket_connect(ip_address, callbacks):
     SERVER_PORT = 10223
     ADDR = (SERVER_IP, SERVER_PORT)
     
-    settings.tcpClicSock = socket(AF_INET, SOCK_STREAM)
+    settings.ip_stu = 1
     
     for i in range(1, 6):
         if settings.ip_stu == 1:
@@ -99,7 +105,12 @@ def socket_connect(ip_address, callbacks):
             if 'connection' in callbacks:
                 callbacks['connection'](f"Connessione {i}/5", '#FF8F00')
             try:
-                settings.tcpClicSock.connect(ADDR)
+                # Ricrea sempre un nuovo oggetto socket per ciascun tentativo
+                sock = socket(AF_INET, SOCK_STREAM)
+                sock.settimeout(3.0)
+                sock.connect(ADDR)
+                sock.settimeout(None)
+                settings.tcpClicSock = sock
                 print("Connesso!")
                 
                 settings.ip_stu = 0 # 0 = Connesso
